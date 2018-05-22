@@ -37,7 +37,7 @@ class Board():
 			self.player_hands.append(self.deck.draw(cards_per_player))
 		
 		self.discard_pile = []
-		self.stacks = [0]*deck.num_colors
+		self.stacks = [0]*self.deck.num_colors
 		self.num_clues = num_clues
 		self.num_lives = num_lives
 
@@ -78,6 +78,6 @@ class Game():
 			pass
 
 if __name__ == '__main__':
-	d = Deck(3,(3,2,1))
-	b = Board(d)
+	# d = Deck(3,(3,2,1))
+	# b = Board(d)
 	print(b.stacks_full())
