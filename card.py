@@ -20,6 +20,12 @@ class Card():
 	def __str__(self):
 		return "Color: {}, Number: {}".format(self.color.name, self.number)
 
+	def __eq__(self, x):
+		return self.color==x.color and self.number==x.number
+
+	def __int__(self):
+		return 3*(self.color.value-1)+(self.number-1)  
+
 class Deck():
 	def __init__(self, num_colors, count_nums):
 		# 6 reds, blues, greens
