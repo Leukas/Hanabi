@@ -4,6 +4,7 @@ import random
 from enum import Enum
 
 class Color(Enum):
+	NO_COLOR = -1
 	RED = 1
 	GREEN = 2
 	BLUE = 3
@@ -16,6 +17,10 @@ class Card():
 	def __init__(self, color, number):
 		self.color = color
 		self.number = number
+		# NO CARD = 
+		# COLOR = -1
+		# NUMBER = -1
+		# INT VALUE = -1
 
 	def __str__(self):
 		return "Color: {}, Number: {}".format(self.color.name, self.number)
@@ -24,7 +29,10 @@ class Card():
 		return self.color==x.color and self.number==x.number
 
 	def __int__(self):
-		return 3*(self.color.value-1)+(self.number-1)  
+		if self.color == -1:
+			return -1
+		else:
+			return 3*(self.color.value-1)+(self.number-1)  
 
 class Deck():
 	def __init__(self, num_colors, count_nums):
@@ -45,6 +53,8 @@ class Deck():
 	def draw(self, num_cards=1):
 		cards = []
 		for i in range(0,num_cards):
+			if len(self.deck) == 0:
+				cards.append(Card(-1,-1)) 
 			cards.append(self.deck.pop())
 		return cards
 

@@ -51,9 +51,14 @@ class Board():
 		return self.stacks == [len(self.deck.count_nums)]*self.deck.num_colors
 
 	def discard_card(self, player_num, hand_idx):
+		"""
+		Discards a card from the player's hand and puts it in the discard pile
+		Adds a "no card" where the card is discarded
+		"""
 		card = self.player_hands[player_num*3+hand_idx]
 		self.discard_pile.append(card)
-
+		self.player_hands[player_num*3+hand_idx] = Card(-1, -1)
+		return card
 
 	def draw_card(self, player_num, hand_idx):
 		card = self.deck.draw()[0]
@@ -64,18 +69,11 @@ class Board():
 		card = self.player_hands[player_num*3+hand_idx]
 		if card.number == self.stacks[card.color-1] + 1:
 			self.stacks[card.color-1] +=1
-		else: 
+			self.player_hands[player_num*3+hand_idx] = Card(-1, -1)
+		else: # If the play is wrong, then card is discarded
 			self.num_lives -=1
 			self.discard_card(player_num, hand_idx)
-			# self.player_hands[player_num] = 1
-
-	# def check_board(self, card):
-	# 	num_repeats = 0
-	# 	for c in self.discard_pile:
-	# 		if c == card:
-	# 			num_repeats += 1
-	# 	for stack in self.stacks:
-			
+		return card
 
 class Game():
 	def __init__(self, deck_num_colors=3, deck_count_nums=(3,2,1), 
@@ -107,15 +105,18 @@ class Game():
 		elif action == Action.DISCARD:
 			self.board.num_clues += 1
 			hand_idx = self.players[player_num].discard()					
-			self.board.discard_card(player_num, hand_idx)
-			# update model
+			card_discarded = self.board.discard_card(player_num, hand_idx)
+
+			self.model.update_discard_and_play(card_discarded, player_num, hand_idx, 
+				self.board.discard_pile, self.board.stacks, list(map(int,self.board.player_hands)))
 			card = self.board.draw_card(player_num, hand_idx)
-			print(card)
 			# update model again
 		else: # action == PLAY CARD
 			hand_idx = self.players[player_num].play_card()
-			self.board.play_card(player_num, hand_idx)
-			# update model
+			card_played = self.board.play_card(player_num, hand_idx)
+
+			self.model.update_discard_and_play(card_played, player_num, hand_idx,
+				self.board.discard_pile, self.board.stacks, list(map(int,self.board.player_hands)))
 			card = self.board.draw_card(player_num, hand_idx)
 			# update model again
 
@@ -125,4 +126,4 @@ if __name__ == '__main__':
 	# print(b.stacks_full())
 	g = Game()
 	g.play_turn(0)
-	g.play_turn(1)
+	# g.play_turn(1)
