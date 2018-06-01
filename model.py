@@ -177,7 +177,7 @@ class Model():
 			# indices where cards are equal to num
 			player_hand_nums = np.array(list(map(num_of_card,player_hand)))
 			num_idxs = player_hand_nums==clue[1]
-			print("Player's hand (numbers):", player_hand_nums)
+			# print("Player's hand (numbers):", player_hand_nums)
 			for node in player_nodes:
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
 				player_world_hand_nums = np.array(list(map(num_of_card,player_world_hand)))
@@ -186,19 +186,19 @@ class Model():
 				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
 					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
-			pass
-			# player_hand_colors = np.array(list(map(color_of_card,player_hand)))
-			# num_idxs = player_hand_colors==clue[1]
-			# nodes_to_remove = []
-			# for node in player_nodes:
-			# 	player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
-			# 	player_world_hand_colors = np.array(list(map(color_of_card,player_world_hand)))
-			# 	if player_hand_colors[num_idxs] != player_world_hand_colors[num_idxs]:
-			# 		nodes_to_remove.append(node)
-		# print(nodes_to_remove)
+			# indices where cards are equal to num
+			player_hand_colors = np.array(list(map(color_of_card,player_hand)))
+			color_idxs = player_hand_colors==clue[1]
+			# print("Player's hand (colorbers):", player_hand_colors)
+			for node in player_nodes:
+				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_color)
+				player_world_hand_colors = np.array(list(map(color_of_card,player_world_hand)))
+				# print(color_idxs)
+				# print("Possible colors:", player_world_hand_colors)
+				if (player_hand_colors[color_idxs] != player_world_hand_colors[color_idxs]).all():
+					nodes_to_remove.append(node)		
+
 		self.graph.remove_nodes_from(nodes_to_remove)
-
-
 
 
 	def left_in_deck(self, player_num, discard_pile, stacks, hands, partial_state):
