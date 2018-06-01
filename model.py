@@ -19,6 +19,8 @@ B2 = 7
 B3 = 8
 
 def num_of_card(card):
+	if card == -1:
+		return -1
 	return card % 3 + 1 # 1 - 3
 
 def color_of_card(card):
@@ -47,14 +49,16 @@ class Model():
 		"""
 		Hands = 9 number array following CardDigit
 		"""
-		for pl in range(0,self.num_players):
-			card_deck = self.remove_known_cards(pl, hands)
+		for p_idx in range(0,self.num_players):
+			card_deck = self.remove_known_cards(p_idx, self.get_visible_hands(hands, p_idx))
+			if p_idx == 0:
+				print("card deck:", card_deck)
 			# get all n-card combinations for each players
 			perms = itertools.permutations(card_deck, 3)
 			perms = set(list(perms))
 			worlds = []
 			for p in perms:
-				world = hands[0:pl*self.cards_per_player] + list(p) + hands[(pl+1)*self.cards_per_player:]
+				world = hands[0:p_idx*self.cards_per_player] + list(p) + hands[(p_idx+1)*self.cards_per_player:]
 				# world = ','.join(str(w) for w in world)
 				world = self.convert_cards_to_node(world)
 
@@ -63,9 +67,13 @@ class Model():
 				if world not in self.graph.nodes:
 					self.graph.add_node(world)
 				
+				# if more than 1 player can access the same world, still need to add those edges into the graph
 				worlds.append(world)
+			if p_idx == 0:
+				print("Print thing", len(worlds))
+				print(worlds)
 
-			self.connect_nodes(worlds, pl)
+			self.connect_nodes(worlds, p_idx)
 		# print(len(self.graph.nodes))
 
 	def convert_cards_to_node(self, cards):
@@ -174,7 +182,7 @@ class Model():
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
 				player_world_hand_nums = np.array(list(map(num_of_card,player_world_hand)))
 				# print(num_idxs)
-				print("Possible nums:", player_world_hand_nums)
+				# print("Possible nums:", player_world_hand_nums)
 				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
 					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
@@ -187,7 +195,7 @@ class Model():
 			# 	player_world_hand_colors = np.array(list(map(color_of_card,player_world_hand)))
 			# 	if player_hand_colors[num_idxs] != player_world_hand_colors[num_idxs]:
 			# 		nodes_to_remove.append(node)
-		print(nodes_to_remove)
+		# print(nodes_to_remove)
 		self.graph.remove_nodes_from(nodes_to_remove)
 
 
@@ -303,17 +311,29 @@ def count_cards(card, discard_pile, stacks, hands):
 if __name__ == '__main__':
 	g = Game()
 	# # print(g.board.player_hands[0].color)
+	hands_int = [6,8,7,5,0,6,7,1,2]
+	# hands_int = [6,8,7,5,2,6,7,1,2]
+	hands = []
+	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
+	for i in range(0,len(hands_int)):
+		hands.append(Card(colors[color_of_card(hands_int[i])],num_of_card(hands_int[i])))
 
+	# print(g.board.player_hands)
+	# g.board.player_hands = hands
+	# print(g.board.player_hands)
+	
+	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
 	print(list(map(int,g.board.player_hands)))
 	just_save_it = len(model.get_accessible_nodes(0))
 	card_num = num_of_card(int(g.board.player_hands[1]))
 
-	hands = [6,8,7,5,0,6,7,1,2]
+
 	# g.board.player
 
-	model.update_clue(0, (0, card_num), hands)#list(map(int,g.board.player_hands)))
+
+	model.update_clue(0, (0, card_num), list(map(int,g.board.player_hands)))
 	print("before clue (should be above after clue) what the fuck are you doing:", just_save_it)
 	print("after clue:", len(model.get_accessible_nodes(0)))
 

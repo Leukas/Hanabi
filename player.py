@@ -85,7 +85,7 @@ class Game():
 		for i in range(0,num_players):
 			self.players.append(Player())
 
-		self.model = Model(3,3, self.board.player_hands)
+		# self.model = Model(3,3, self.board.player_hands)
 
 	def play_game(self):
 		# should include that the last player who draws a card gets to play again 

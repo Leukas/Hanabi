@@ -1,9 +1,9 @@
 # card.py
 import numpy as np
 import random 
-from enum import Enum
+from enum import IntEnum
 
-class Color(Enum):
+class Color(IntEnum):
 	NO_COLOR = -1
 	RED = 1
 	GREEN = 2
