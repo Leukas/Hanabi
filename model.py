@@ -154,13 +154,20 @@ class Model():
 		cards_left = remove_known_cards(player_num, all_cards)
 		return cards_left
 
-	def reconnect_nodes(self):
+	def reconnect_nodes(self, hands):
 		nodes = copy.deepcopy(self.graph.nodes)
 		self.graph.clear()
 		self.graph.add_nodes_from(nodes)
 		for p in range(0,self.num_players):
+			player_nodes = []
 			for node in self.graph.nodes:
-				# TODO add edges back into graph
+				visible_hands = self.get_visible_hands(hands, p)
+				visible_world_hands = self.get_visible_hands(self.convert_node_to_cards(node))
+				if visible_hands == visible_world_hands:
+					player_nodes.append(node)
+			self.connect_nodes(player_nodes, p)
+
+			
 	def connect_nodes(self, worlds, p):
 		"""
 		Adds accessibility relations for each player
