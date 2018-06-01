@@ -174,8 +174,8 @@ class Model():
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
 				player_world_hand_nums = np.array(list(map(num_of_card,player_world_hand)))
 				# print(num_idxs)
+				print("Possible nums:", player_world_hand_nums)
 				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
-					print("Possible nums:", player_world_hand_nums)
 					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
 			pass
@@ -303,12 +303,17 @@ def count_cards(card, discard_pile, stacks, hands):
 if __name__ == '__main__':
 	g = Game()
 	# # print(g.board.player_hands[0].color)
+
 	model = Model(3,3, g.board.player_hands)
 
 	print(list(map(int,g.board.player_hands)))
 	just_save_it = len(model.get_accessible_nodes(0))
 	card_num = num_of_card(int(g.board.player_hands[1]))
-	model.update_clue(0, (0, card_num), list(map(int,g.board.player_hands)))
+
+	hands = [6,8,7,5,0,6,7,1,2]
+	# g.board.player
+
+	model.update_clue(0, (0, card_num), hands)#list(map(int,g.board.player_hands)))
 	print("before clue (should be above after clue) what the fuck are you doing:", just_save_it)
 	print("after clue:", len(model.get_accessible_nodes(0)))
 
