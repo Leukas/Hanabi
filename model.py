@@ -18,6 +18,14 @@ B1 = 6
 B2 = 7
 B3 = 8
 
+def num_of_card(card):
+	return card % 3 + 1 # 1 - 3
+
+def color_of_card(card):
+	if card == -1:
+		return -1
+	return int(card / 3) + 1 # 1 - 3
+
 class Model():
 	def __init__(self, num_players, cards_per_player, player_hands):
 		print("Creating nodes...")
@@ -69,6 +77,23 @@ class Model():
 	def get_visible_hands(self, hands, player_idx):
 		return hands[0:player_idx*self.cards_per_player] + hands[(player_idx+1)*self.cards_per_player:]
 
+	def get_player_hand(self, hands, player_idx):
+		return hands[player_idx*self.cards_per_player:(player_idx+1)*self.cards_per_player]
+
+	def get_accessible_nodes(self, player_num):
+		# player_edges = nx.get_edge_attributes(self.graph, player_num)
+		# print(player_num)
+		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
+		# print(len(self.graph.nodes))
+		# print(list(self.graph.nodes.keys())[0])
+		# print(self.graph.edges)
+		# # print(self.graph.edges['0,0,0,0,0,0,0','0,0'])
+		# print(len(player_edges))
+		player_nodes = np.array(list(player_edges.keys()))
+		player_nodes = set(list(player_nodes.flatten()))
+		# print(len(player_nodes))
+		return player_nodes
+
 	def update_discard_and_play(self, card, player_num, hand_idx, discard_pile, stacks, hands):
 		# the card that is discarded is still in the player's hand at this point, but also in the discard pile			
 		# update the knowledge for the player whose card is discarded 
@@ -101,9 +126,7 @@ class Model():
 		nodes_to_remove = set()
 
 		for i in range(0,self.num_players):
-			player_edges = nx.get_edge_attributes(self.graph, player_num)
-			player_nodes = np.array(list(player_edges.keys()))
-			player_nodes = set(list(player_nodes.flatten()))
+			player_nodes = get_accessible_nodes(player_num)
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
@@ -126,15 +149,49 @@ class Model():
 
 		self.graph.remove_nodes_from(nodes_to_remove)
 		self.graph.add_nodes_from(nodes_to_add)
-
-				# Modify nodes for other players so that discarded card is now a new card
-
-
+		# Modify nodes for other players so that discarded card is now a new card
+		self.reconnect_nodes(hands)
 
 
-	def update_clue(self, agents):
-		
-		pass
+
+	def update_clue(self, player_num, clue, hands):
+		"""
+		player_num = player index of the person receivng the clue.
+		clue = (x, y) x = {0,1}, y = {0,2}
+			x = 0 if a number clue, 1 if a color clue
+			y = 1,2,3 = 1,2,3 or = R,G,B
+
+		"""		
+		player_nodes = self.get_accessible_nodes(player_num)
+		player_hand = np.array(self.get_player_hand(hands, player_num))
+		nodes_to_remove = []
+		if clue[0] == 0: # NUMBER CLUE
+			# indices where cards are equal to num
+			player_hand_nums = np.array(list(map(num_of_card,player_hand)))
+			num_idxs = player_hand_nums==clue[1]
+			print("Player's hand (numbers):", player_hand_nums)
+			for node in player_nodes:
+				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
+				player_world_hand_nums = np.array(list(map(num_of_card,player_world_hand)))
+				# print(num_idxs)
+				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
+					print("Possible nums:", player_world_hand_nums)
+					nodes_to_remove.append(node)
+		else: # COLOR CLUE	
+			pass
+			# player_hand_colors = np.array(list(map(color_of_card,player_hand)))
+			# num_idxs = player_hand_colors==clue[1]
+			# nodes_to_remove = []
+			# for node in player_nodes:
+			# 	player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
+			# 	player_world_hand_colors = np.array(list(map(color_of_card,player_world_hand)))
+			# 	if player_hand_colors[num_idxs] != player_world_hand_colors[num_idxs]:
+			# 		nodes_to_remove.append(node)
+		print(nodes_to_remove)
+		self.graph.remove_nodes_from(nodes_to_remove)
+
+
+
 
 	def left_in_deck(self, player_num, discard_pile, stacks, hands, partial_state):
 		"""
@@ -155,6 +212,10 @@ class Model():
 		return cards_left
 
 	def reconnect_nodes(self, hands):
+		"""
+		Removes all previous edges, then reconnects them based on 
+		current knowledge of other players' hands
+		"""
 		nodes = copy.deepcopy(self.graph.nodes)
 		self.graph.clear()
 		self.graph.add_nodes_from(nodes)
@@ -162,7 +223,7 @@ class Model():
 			player_nodes = []
 			for node in self.graph.nodes:
 				visible_hands = self.get_visible_hands(hands, p)
-				visible_world_hands = self.get_visible_hands(self.convert_node_to_cards(node))
+				visible_world_hands = self.get_visible_hands(self.convert_node_to_cards(node), p)
 				if visible_hands == visible_world_hands:
 					player_nodes.append(node)
 			self.connect_nodes(player_nodes, p)
@@ -173,7 +234,12 @@ class Model():
 		Adds accessibility relations for each player
 		"""
 		world_edges = itertools.combinations_with_replacement(worlds,2)
-		self.graph.add_edges_from(world_edges, player=p)
+		if p == 0:
+			self.graph.add_edges_from(world_edges, p0=1)
+		elif p == 1:
+			self.graph.add_edges_from(world_edges, p1=1)
+		elif p == 2:
+			self.graph.add_edges_from(world_edges, p2=1)
 
 
 
@@ -236,33 +302,56 @@ def count_cards(card, discard_pile, stacks, hands):
 
 if __name__ == '__main__':
 	g = Game()
-	# print(g.board.player_hands[0].color)
+	# # print(g.board.player_hands[0].color)
 	model = Model(3,3, g.board.player_hands)
+
+	print(list(map(int,g.board.player_hands)))
+	just_save_it = len(model.get_accessible_nodes(0))
+	card_num = num_of_card(int(g.board.player_hands[1]))
+	model.update_clue(0, (0, card_num), list(map(int,g.board.player_hands)))
+	print("before clue (should be above after clue) what the fuck are you doing:", just_save_it)
+	print("after clue:", len(model.get_accessible_nodes(0)))
 
 	# print(model.graph.nodes.data())
 	# model.graph.add_node('hi', value='x')
 	# model.graph.nodes['hi']['value'] = 'y'
 	# print(model.graph.nodes.data())
-	d = Deck(3,(3,2,1))
-	# cards = d.draw(3)
-	card = d.draw(1)[0]
+	# d = Deck(3,(3,2,1))
+	# # cards = d.draw(3)
+	# card = d.draw(1)[0]
 
-	c, n_c, n_n = count_cards(card,d.draw(3),[1,1,1],[0,0,0,1,1,1])
-	# print(card, int(card), c, all_c)
-	# print(list(map(int,cards)))
-	# print(card)
-	# print("Card:", c, "Color:",n_c ,"Number:",n_n)
-	G=nx.Graph()
-	G.add_path([1,2,3],color='red')
-	color=nx.get_edge_attributes(G,'color')
-	col = np.array(list(color.keys()))
-	col = set(list(col.flatten()))
-	nodes = copy.deepcopy(G.nodes)
-	print(nodes)
-	G.clear()
-	G.add_nodes_from(nodes)
-	# G = nx.Graph(G.nodes())
-	print(G.nodes)
+	# c, n_c, n_n = count_cards(card,d.draw(3),[1,1,1],[0,0,0,1,1,1])
+	# # print(card, int(card), c, all_c)
+	# # print(list(map(int,cards)))
+	# # print(card)
+	# # print("Card:", c, "Color:",n_c ,"Number:",n_n)
+	# G=nx.Graph()
+	# G.add_path([1,2,3],player='blue')
+	# G.add_path([1,2,3],color='red')
+	# G.add_path([7,8,9],player='2')
+	# G.add_path([7,8,9],player='3')
+
+	# # p = 1
+	# # G.add_edges_from([(7,8),(8,9)], attr_data={p:1})
+	# # print([G[u][v]['color'] for u,v in G.edges()])
+
+	# print(G.edges_iter())
+	# color=nx.get_edge_attributes(G,'player')
+	# player=nx.get_edge_attributes(G,'player')
+	# p1=nx.get_edge_data(G,{p:1})
+	# print(p1)
+	
+
+	# print(color)
+	# print(player)
+	# col = np.array(list(color.keys()))
+	# col = set(list(col.flatten()))
+	# nodes = copy.deepcopy(G.nodes)
+	# print(nodes)
+	# G.clear()
+	# G.add_nodes_from(nodes)
+	# # G = nx.Graph(G.nodes())
+	# print(G.nodes)
 	# print(col)
 	# for i in col:
 	# 	print(i)
