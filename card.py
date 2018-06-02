@@ -33,6 +33,23 @@ class Card():
 			return -1
 		else:
 			return 3*(self.color.value-1)+(self.number-1)  
+	
+	@staticmethod
+	def to_card(int_card):
+		colors = [0, Color.RED, Color.GREEN, Color.BLUE]
+		return Card(colors[Card.color_of_card(int_card)],Card.num_of_card(int_card))
+
+	@staticmethod
+	def num_of_card(card):
+		if card == -1:
+			return -1
+		return card % 3 + 1 # 1 - 3
+	
+	@staticmethod
+	def color_of_card(card):
+		if card == -1:
+			return -1
+		return int(card / 3) + 1 # 1 - 3
 
 class Deck():
 	def __init__(self, num_colors, count_nums):

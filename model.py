@@ -18,20 +18,12 @@ B1 = 6
 B2 = 7
 B3 = 8
 
-def num_of_card(card):
-	if card == -1:
-		return -1
-	return card % 3 + 1 # 1 - 3
 
-def color_of_card(card):
-	if card == -1:
-		return -1
-	return int(card / 3) + 1 # 1 - 3
 
 class Model():
 	def __init__(self, num_players, cards_per_player, player_hands):
 		print("Creating nodes...")
-		self.graph = nx.Graph()
+		self.graph = nx.MultiGraph()
 		self.num_players = num_players
 		self.cards_per_player = cards_per_player
 		print("Nodes created.")
@@ -51,10 +43,10 @@ class Model():
 		"""
 		for p_idx in range(0,self.num_players):
 			card_deck = self.remove_known_cards(p_idx, self.get_visible_hands(hands, p_idx))
-			if p_idx == 0:
-				print("card deck:", card_deck)
+			# if p_idx == 0:
+			# 	print("card deck:", card_deck)
 			# get all n-card combinations for each players
-			perms = itertools.permutations(card_deck, 3)
+			perms = itertools.permutations(card_deck, self.cards_per_player)
 			perms = set(list(perms))
 			worlds = []
 			for p in perms:
@@ -69,9 +61,9 @@ class Model():
 				
 				# if more than 1 player can access the same world, still need to add those edges into the graph
 				worlds.append(world)
-			if p_idx == 0:
-				print("Print thing", len(worlds))
-				print(worlds)
+			# if p_idx == 0:
+			# 	print("Print thing", len(worlds))
+			# 	print(worlds)
 
 			self.connect_nodes(worlds, p_idx)
 		# print(len(self.graph.nodes))
@@ -97,8 +89,10 @@ class Model():
 		# print(self.graph.edges)
 		# # print(self.graph.edges['0,0,0,0,0,0,0','0,0'])
 		# print(len(player_edges))
-		player_nodes = np.array(list(player_edges.keys()))
-		player_nodes = set(list(player_nodes.flatten()))
+		#Make sure we remove every third element (insertion order from the multigraph)
+		# print("player_edges {}".format(player_edges))
+		player_nodes = list(np.array(list(player_edges.keys())).flatten())
+		player_nodes = set(player_nodes[0::3] + player_nodes[1::3])
 		# print(len(player_nodes))
 		return player_nodes
 
@@ -115,7 +109,7 @@ class Model():
 			if (visible_hands != self.get_visible_hands(self.convert_node_to_cards(node_key),player_num)):
 				continue
 
-			player_card_count, player_color_count, player_number_count = count_cards(card, [], [], self.convert_node_to_cards(node_key[player_num*3:(player_num+1)*3]))
+			player_card_count, player_color_count, player_number_count = count_cards(card, [], [], self.convert_node_to_cards(node_key[player_num*self.cards_per_player:(player_num+1)*self.cards_per_player]))
 			if (int(card) != node_key[player_num*3+hand_idx]
 			# update player's knowledge about other cards
 				# counting number of cards that are the same that the player considers possible in this world
@@ -134,13 +128,13 @@ class Model():
 		nodes_to_remove = set()
 
 		for i in range(0,self.num_players):
-			player_nodes = get_accessible_nodes(player_num)
+			player_nodes = self.get_accessible_nodes(player_num)
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
 					player_hand = node[player_num*3:(player_num+1)*3]
-					partial_state = partial_state[:hand_idx] + player_hand[hand_idx+1:]
+					partial_state = self.partial_state[:hand_idx] + player_hand[hand_idx+1:]
 					cards_left = self.left_in_deck(player_num, discard_pile, stacks, hands, partial_state)
 
 					for c in cards_left:
@@ -175,24 +169,24 @@ class Model():
 		nodes_to_remove = []
 		if clue[0] == 0: # NUMBER CLUE
 			# indices where cards are equal to num
-			player_hand_nums = np.array(list(map(num_of_card,player_hand)))
+			player_hand_nums = np.array(list(map(Card.num_of_card,player_hand)))
 			num_idxs = player_hand_nums==clue[1]
 			# print("Player's hand (numbers):", player_hand_nums)
 			for node in player_nodes:
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
-				player_world_hand_nums = np.array(list(map(num_of_card,player_world_hand)))
+				player_world_hand_nums = np.array(list(map(Card.num_of_card,player_world_hand)))
 				# print(num_idxs)
 				# print("Possible nums:", player_world_hand_nums)
 				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
 					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
 			# indices where cards are equal to num
-			player_hand_colors = np.array(list(map(color_of_card,player_hand)))
+			player_hand_colors = np.array(list(map(Card.color_of_card,player_hand)))
 			color_idxs = player_hand_colors==clue[1]
 			# print("Player's hand (colorbers):", player_hand_colors)
 			for node in player_nodes:
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_color)
-				player_world_hand_colors = np.array(list(map(color_of_card,player_world_hand)))
+				player_world_hand_colors = np.array(list(map(Card.color_of_card,player_world_hand)))
 				# print(color_idxs)
 				# print("Possible colors:", player_world_hand_colors)
 				if (player_hand_colors[color_idxs] != player_world_hand_colors[color_idxs]).all():
@@ -316,7 +310,7 @@ if __name__ == '__main__':
 	hands = []
 	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
 	for i in range(0,len(hands_int)):
-		hands.append(Card(colors[color_of_card(hands_int[i])],num_of_card(hands_int[i])))
+		hands.append(Card(colors[Card.color_of_card(hands_int[i])],Card.num_of_card(hands_int[i])))
 
 	# print(g.board.player_hands)
 	# g.board.player_hands = hands
@@ -327,7 +321,7 @@ if __name__ == '__main__':
 
 	print(list(map(int,g.board.player_hands)))
 	just_save_it = len(model.get_accessible_nodes(0))
-	card_num = num_of_card(int(g.board.player_hands[1]))
+	card_num = Card.num_of_card(int(g.board.player_hands[1]))
 
 
 	# g.board.player

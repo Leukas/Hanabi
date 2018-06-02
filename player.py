@@ -77,15 +77,15 @@ class Board():
 
 class Game():
 	def __init__(self, deck_num_colors=3, deck_count_nums=(3,2,1), 
-		num_players=3, cards_per_player=3, num_clues=3, num_lives=3):
+		num_players=3, cards_per_player=3, num_clues=3, num_lives=3, initialize_model=True):
 		self.cards_per_player = cards_per_player
 
 		self.board = Board(deck_num_colors,deck_count_nums,num_players,cards_per_player,num_clues,num_lives)
 		self.players = [] 
 		for i in range(0,num_players):
 			self.players.append(Player())
-
-		# self.model = Model(3,3, self.board.player_hands)
+		if initialize_model:
+			self.model = Model(3,3, self.board.player_hands)
 
 	def play_game(self):
 		# should include that the last player who draws a card gets to play again 
