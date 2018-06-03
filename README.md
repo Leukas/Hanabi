@@ -1,2 +1,4 @@
 # Hanabi
-Hanabi is logical
+Lukas Edman
+Swaraj Dalmia
+Mario Ríos Muñoz
