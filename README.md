@@ -10,8 +10,6 @@ Another approach could be more syntactic where we define knowledge bases for eac
 
 The players are modelled as perfectly rational agents in the sense of derivability in the S5 epistemic system. The Kripke models we consider are therefore S5 models where the accessibility relations for each of the players form an equivalence class. Real life agents while playing Hanabi even despite being perfectly rational do require some memory with respect to the clues they have given earlier. The rest of the information can be inferred from the board configuration. 
 
-Some storage space regarding the clues that they have received, the clues that the other places have, the number of lives left and the number of clues left. The rest of the information regarding the board configuration is visible at every moment.
-
 The agents are however not perfect agents since their behavior is modelled with strategies that we defined which are currently just simple heuristics. Therefore, the agents don't make ideal decisions in terms of optimal play for cooperative success. 
 
 ### Kripke Model
