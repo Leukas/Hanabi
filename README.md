@@ -1,4 +1,4 @@
 # Hanabi
-Lukas Edman
-Swaraj Dalmia
+Lukas Edman,
+Swaraj Dalmia,
 Mario Ríos Muñoz
