@@ -236,17 +236,6 @@ class Model():
 
 	def query_model(self, query, worlds = None):
 		"""
-		NA = 45 # Card doesnt matter
-		NC = -1 # No Card
-		R1 = 0
-		R2 = 1
-		R3 = 2
-		G1 = 3
-		G2 = 4
-		G3 = 5
-		B1 = 6
-		B2 = 7
-		B3 = 8
 		Query is of form : (((K0(p)) | ((r) & (q))) | (~ (q))
 		Example: Player 2 knows Player 1 has a red card
 						K2(R1,R2,R3,NA,NA,NA,NA,NA,NC Batman)
@@ -261,7 +250,7 @@ class Model():
 			query_cards = query.split(',')
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
-				for i in range(9):
+				for i in len(query_cards):
 					if query_cards[i] != "NA":
 						if card_dict[query_cards[i]] != world_cards[i]:
 							return False
@@ -270,6 +259,10 @@ class Model():
 			op, sub1, sub2 = break_it_like_you_hate_it(query, worlds)
 			if op == '~':
 				return not query_model(sub1, worlds)
+			elif op == "&":
+				return query_model(sub1, worlds) and query_model(sub2, worlds)
+			elif op == "|":
+				return query_model(sub1, worlds) or query_model(sub2, worlds)
 			elif op[0] == 'K':
 				# 1 world left: 
 				#	Get all accessible nodes to agent 
@@ -286,10 +279,6 @@ class Model():
 				for world in worlds:
 					boo = boo and query_model(query, world)
 				return boo
-			elif op == "&":
-				return query_model(sub1, worlds) and query_model(sub2, worlds)
-			elif op == "|":
-				return query_model(sub1, worlds) or query_model(sub2, worlds)
 			else:
 				print("Oops, something went terribly wrong...")
 
