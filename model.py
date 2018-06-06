@@ -7,6 +7,7 @@ from enum import Enum
 from player import *
 import copy
 
+NA = 45 # Card doesnt matter
 NC = -1 # No Card
 R1 = 0
 R2 = 1
@@ -18,6 +19,17 @@ B1 = 6
 B2 = 7
 B3 = 8
 
+card_dict = {'NA': 45 ,
+'NC': -1,
+'R1': 0,
+'R2': 1,
+'R3': 2,
+'G1': 3,
+'G2': 4,
+'G3': 5,
+'B1': 6,
+'B2': 7,
+'B3': 8}
 
 
 class Model():
@@ -80,20 +92,22 @@ class Model():
 	def get_player_hand(self, hands, player_idx):
 		return hands[player_idx*self.cards_per_player:(player_idx+1)*self.cards_per_player]
 
-	def get_accessible_nodes(self, player_num):
-		# player_edges = nx.get_edge_attributes(self.graph, player_num)
-		# print(player_num)
+	def get_accessible_nodes_from_world(self, player_num, world):
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
-		# print(len(self.graph.nodes))
-		# print(list(self.graph.nodes.keys())[0])
-		# print(self.graph.edges)
-		# # print(self.graph.edges['0,0,0,0,0,0,0','0,0'])
-		# print(len(player_edges))
+		accessible_nodes = set()
+		for edge in player_edges:
+			if edge[0] == world:
+				accessible_nodes.add(edge[1])
+			elif edge[1] == world:
+				accessible_nodes.add(edge[0])
+
+		return accessible_nodes
+
+	def get_accessible_nodes(self, player_num):
+		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
 		#Make sure we remove every third element (insertion order from the multigraph)
-		# print("player_edges {}".format(player_edges))
 		player_nodes = list(np.array(list(player_edges.keys())).flatten())
 		player_nodes = set(player_nodes[0::3] + player_nodes[1::3])
-		# print(len(player_nodes))
 		return player_nodes
 
 	def update_discard_and_play(self, card, player_num, hand_idx, discard_pile, stacks, hands):
@@ -194,6 +208,90 @@ class Model():
 
 		self.graph.remove_nodes_from(nodes_to_remove)
 
+	@staticmethod
+	def break_it_like_you_hate_it(formula):
+		op = ""
+		sub1 = ""
+		sub2 = ""
+		par_depth = 0
+		for i in range(0,len(formula)):
+			char = formula[i]
+			if char == "(":
+				par_depth += 1
+			elif char == ")":
+				par_depth -= 1
+			elif par_depth == 0 and char == "K":
+				op = "K" + formula[i+1]
+				sub1 = formula[i+3:len(formula)-1]
+				return op, sub1, sub2
+			elif par_depth == 0 and (char == "&" or char == "|"):
+				op = char
+				sub1 = formula[1:i-1]
+				sub2 = formula[i+2:len(formula)-1]
+				return op, sub1, sub2
+			elif par_depth == 0 and  char == "~":
+				op = char
+				sub1 = formula[i+2:len(formula)-1]
+				return op, sub1, sub2
+
+	def query_model(self, query, worlds = None):
+		"""
+		NA = 45 # Card doesnt matter
+		NC = -1 # No Card
+		R1 = 0
+		R2 = 1
+		R3 = 2
+		G1 = 3
+		G2 = 4
+		G3 = 5
+		B1 = 6
+		B2 = 7
+		B3 = 8
+		Query is of form : (((K0(p)) | ((r) & (q))) | (~ (q))
+		Example: Player 2 knows Player 1 has a red card
+						K2(R1,R2,R3,NA,NA,NA,NA,NA,NC Batman)
+		"""
+		if worlds is None:
+			worlds = self.graph.nodes
+
+		# if there are no parentheses, then the query is atomic
+		if '(' not in query:
+			# Evaluate the query
+			# Parse the atomic query
+			query_cards = query.split(',')
+			for world in worlds:
+				world_cards = self.convert_node_to_cards(world)
+				for i in range(9):
+					if query_cards[i] != "NA":
+						if card_dict[query_cards[i]] != world_cards[i]:
+							return False
+			return True
+		else:
+			op, sub1, sub2 = break_it_like_you_hate_it(query, worlds)
+			if op == '~':
+				return not query_model(sub1, worlds)
+			elif op[0] == 'K':
+				# 1 world left: 
+				#	Get all accessible nodes to agent 
+				#	Check if formula is true in all these nodes 
+				if len(worlds)==1:
+					nodes = self.get_accessible_nodes_from_world(int(op[1]), worlds[0])
+					boo = True
+					for node in nodes:
+						boo = boo and query_model(sub1, node)
+					return boo
+				# N worlds left:
+				#	Check if the knowledge formula is true in all worlds
+				boo = True
+				for world in worlds:
+					boo = boo and query_model(query, world)
+				return boo
+			elif op == "&":
+				return query_model(sub1, worlds) and query_model(sub2, worlds)
+			elif op == "|":
+				return query_model(sub1, worlds) or query_model(sub2, worlds)
+			else:
+				print("Oops, something went terribly wrong...")
 
 	def left_in_deck(self, player_num, discard_pile, stacks, hands, partial_state):
 		"""
