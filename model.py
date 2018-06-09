@@ -223,6 +223,7 @@ class Model():
 			elif par_depth == 0 and char == "K":
 				op = "K" + formula[i+1]
 				sub1 = formula[i+3:len(formula)-1]
+				# print(op,sub1,sub2)
 				return op, sub1, sub2
 			elif par_depth == 0 and (char == "&" or char == "|"):
 				op = char
@@ -248,21 +249,23 @@ class Model():
 			# Evaluate the query
 			# Parse the atomic query
 			query_cards = query.split(',')
+			# print(query_cards)
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
-				for i in len(query_cards):
+				for i in range(0,len(query_cards)):
 					if query_cards[i] != "NA":
 						if card_dict[query_cards[i]] != world_cards[i]:
 							return False
 			return True
 		else:
-			op, sub1, sub2 = break_it_like_you_hate_it(query, worlds)
+			print(worlds)
+			op, sub1, sub2 = self.break_it_like_you_hate_it(query)#, worlds)
 			if op == '~':
-				return not query_model(sub1, worlds)
+				return not self.query_model(sub1, worlds)
 			elif op == "&":
-				return query_model(sub1, worlds) and query_model(sub2, worlds)
+				return self.query_model(sub1, worlds) and self.query_model(sub2, worlds)
 			elif op == "|":
-				return query_model(sub1, worlds) or query_model(sub2, worlds)
+				return self.query_model(sub1, worlds) or self.query_model(sub2, worlds)
 			elif op[0] == 'K':
 				# 1 world left: 
 				#	Get all accessible nodes to agent 
@@ -271,13 +274,20 @@ class Model():
 					nodes = self.get_accessible_nodes_from_world(int(op[1]), worlds[0])
 					boo = True
 					for node in nodes:
-						boo = boo and query_model(sub1, node)
+						# print(sub1)
+						# print("node", node)
+						boo = self.query_model(sub1, [node])
+						if not boo:
+							break
 					return boo
 				# N worlds left:
 				#	Check if the knowledge formula is true in all worlds
 				boo = True
 				for world in worlds:
-					boo = boo and query_model(query, world)
+					# print(world)
+					boo = self.query_model(query, [world])
+					if not boo:
+						break
 				return boo
 			else:
 				print("Oops, something went terribly wrong...")
@@ -338,7 +348,6 @@ class Model():
 		"""
 	# card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
-
 		for i in range(0, len(hands)):
 			if (i/3) == player_num:
 				continue
@@ -393,30 +402,38 @@ if __name__ == '__main__':
 	g = Game()
 	# # print(g.board.player_hands[0].color)
 	hands_int = [6,8,7,5,0,6,7,1,2]
-	# hands_int = [6,8,7,5,2,6,7,1,2]
+	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
 	hands = []
 	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
 	for i in range(0,len(hands_int)):
 		hands.append(Card(colors[Card.color_of_card(hands_int[i])],Card.num_of_card(hands_int[i])))
 
 	# print(g.board.player_hands)
-	# g.board.player_hands = hands
+	g.board.player_hands = hands
 	# print(g.board.player_hands)
 	
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
-
 	print(list(map(int,g.board.player_hands)))
-	just_save_it = len(model.get_accessible_nodes(0))
-	card_num = Card.num_of_card(int(g.board.player_hands[1]))
+	val = model.query_model("K2(~(K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)))")#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 
+	# "K0(~p)" agent 0 knows p is false
+	# "~K0(p)" agent 0 doesn't know p is true
+
+
+	"K2(~)"
+
+	print(val)
+	# just_save_it = len(model.get_accessible_nodes(0))
+	# card_num = Card.num_of_card(int(g.board.player_hands[1]))
 
 	# g.board.player
 
 
-	model.update_clue(0, (0, card_num), list(map(int,g.board.player_hands)))
-	print("before clue (should be above after clue) what the fuck are you doing:", just_save_it)
-	print("after clue:", len(model.get_accessible_nodes(0)))
+	# model.update_clue(0, (0, card_num), list(map(int,g.board.player_hands)))
+	# print("before clue (should be above after clue) what the fuck are you doing:", just_save_it)
+	# print("after clue:", len(model.get_accessible_nodes(0)))
 
 	# print(model.graph.nodes.data())
 	# model.graph.add_node('hi', value='x')
