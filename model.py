@@ -63,13 +63,6 @@ class Model():
 		self.initialize_model(list(map(int,player_hands)))
 		print("Model initialized.")
 
-	# def convert_hands(self, board_hands):
-	# 	model_hands = []
-	# 	for i in range(0, len(board_hands)):
-	# 		model_hands.append((board_hands[i].color.value-1)*3+(board_hands[i].number-1))
-		
-	# 	return model_hands
-
 	def initialize_model(self, hands):
 		"""
 		Hands = 9 number array following CardDigit
@@ -106,8 +99,6 @@ class Model():
 		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p1=1)
 		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p2=1)
 
-		# print(len(self.graph.nodes))
-
 	def convert_cards_to_node(self, cards):
 		return ','.join(str(w) for w in cards)
 
@@ -139,8 +130,6 @@ class Model():
 		# print(non_self_player_nodes, self_player_nodes)
 		return non_self_player_nodes, self_player_nodes
 
-		
-
 	def get_accessible_nodes_from_world(self, player_num, world):
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
 
@@ -151,7 +140,6 @@ class Model():
 			elif edge[1] == world:
 				accessible_nodes.add(edge[0])
 		return accessible_nodes #np.unique(accessible_nodes)[:-1]
-
 	# CHANGE THIS
 	def get_accessible_nodes(self, player_num):
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
@@ -185,7 +173,6 @@ class Model():
 				or (number_count + player_number_count > (4-card.number)*3)):
 				self.graph.remove_node(node_key)
 			
-
 	def update_draw_card(self, card, player_num, hand_idx, discard_pile, stacks, hands):
 		# Hand is now updated with new card
 		nodes_to_add = set()
@@ -217,8 +204,6 @@ class Model():
 		self.graph.add_nodes_from(nodes_to_add)
 		# Modify nodes for other players so that discarded card is now a new card
 		self.reconnect_nodes(hands)
-
-
 
 	def update_clue(self, player_num, clue, hands):
 		"""
@@ -304,15 +289,17 @@ class Model():
 
 			query_cards = list(map(lambda x: card_dict[x], query_cards))
 			query_cards = np.array(query_cards)
-			na_filter = np.argwhere(query_cards!=45).flatten()
+			# na_filter = np.argwhere(query_cards!=45).flatten()
 			# print("NA filter",na_filter)
-			query_cards = query_cards[na_filter]
+			# query_cards = query_cards[na_filter]
 			# print(query_cards)
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
-				world_cards = np.array(world_cards)
+				# world_cards = np.array(world_cards)
 				# print(query_cards, world_cards[na_filter])
-				if (query_cards!=world_cards[na_filter]).all():
+				# print(query_cards!=world_cards[na_filter])
+				# if (query_cards!=world_cards[na_filter]).any():
+				if (query_cards!=world_cards).any():
 					return False
 				# for i in range(0,len(query_cards)):
 					# if query_cards[i] != "NA":
@@ -397,9 +384,6 @@ class Model():
 			self.connect_nodes(player_nodes, p)
 		
 		self.add_self_loops()
-
-
-
 			
 	def connect_nodes(self, worlds, p):
 		"""
@@ -414,13 +398,10 @@ class Model():
 		elif p == 2:
 			self.graph.add_edges_from(world_edges, p2=1)
 
-
-
 	def remove_known_cards(self, player_num, hands):
 		"""
 		Removes all cards that player_num can see from hands
 		"""
-	# card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		for i in range(0, len(hands)):
 			if (i/3) == player_num:
@@ -530,7 +511,14 @@ def model_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	val = model.query_model("~(K0(R1,R1,R1,G3,R1,B1,B2,R2,R3))")
+	# val = model.query_model("K1(K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3)))") # true
+	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
+	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
+
+	# possibly useless
+	# val = model.query_model("K1(K0(~(R1,R1,R1,NA,NA,NA,NA,NA,NA)))") # true 
+	# val = model.query_model("K0(~(R1,R1,R1,NA,NA,NA,NA,NA,NA))") # true
+
 	# val = model.query_model("K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)")
 
 
