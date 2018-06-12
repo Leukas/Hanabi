@@ -31,6 +31,27 @@ card_dict = {'NA': 45 ,
 'B2': 7,
 'B3': 8}
 
+card_dict_inv = {v: k for k, v in card_dict.items()}
+
+def worlds_of_strings(nodes):
+	'''
+	Converts all worlds from number-string format to string-string format
+	Ex: '0,0,0' to 'R1,R1,R1' for all worlds
+	'''
+	node_nums = []
+	for node in nodes:
+		node_nums.append(','.join(map(lambda x: str(card_dict_inv[int(x)]), node.split(','))))
+	return node_nums
+
+def worlds_of_numbers(nodes):
+	'''
+	Converts all worlds from string-string format to number-string format
+	Ex: 'R1,R1,R1' to '0,0,0' for all worlds
+	'''
+	node_nums = []
+	for node in nodes:
+		node_nums.append(','.join(map(lambda x: str(card_dict[x]), node.split(','))))
+	return node_nums
 
 class Model():
 	def __init__(self, num_players, cards_per_player, player_hands):
@@ -78,6 +99,13 @@ class Model():
 			# 	print(worlds)
 
 			self.connect_nodes(worlds, p_idx)
+			self.add_self_loops()
+
+	def add_self_loops(self):
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p0=1)
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p1=1)
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p2=1)
+
 		# print(len(self.graph.nodes))
 
 	def convert_cards_to_node(self, cards):
@@ -92,21 +120,43 @@ class Model():
 	def get_player_hand(self, hands, player_idx):
 		return hands[player_idx*self.cards_per_player:(player_idx+1)*self.cards_per_player]
 
+	def get_player_cliques(self, player_num, worlds):
+		"""
+		Gets cliques of size > 1 and 1 for the specified player
+		"""
+		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
+		player_edges = np.array(list(player_edges.keys()))
+		
+		non_self_loop_idxs = np.argwhere(player_edges[:,0]!=player_edges[:,1]).flatten()
+		self_loop_idxs = np.argwhere(player_edges[:,0]==player_edges[:,1]).flatten()
+		
+		non_self_player_edges = player_edges[non_self_loop_idxs].flatten()
+		self_player_edges = player_edges[self_loop_idxs].flatten()
+		
+		non_self_player_nodes = set(list(non_self_player_edges[0::3]) + list(non_self_player_edges[1::3]))
+		self_player_nodes = set(list(self_player_edges[0::3]) + list(self_player_edges[1::3]))
+		self_player_nodes = self_player_nodes - non_self_player_nodes
+		# print(non_self_player_nodes, self_player_nodes)
+		return non_self_player_nodes, self_player_nodes
+
+		
+
 	def get_accessible_nodes_from_world(self, player_num, world):
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
+
 		accessible_nodes = set()
-		for edge in player_edges:
+		for i, edge in enumerate(player_edges):
 			if edge[0] == world:
 				accessible_nodes.add(edge[1])
 			elif edge[1] == world:
 				accessible_nodes.add(edge[0])
+		return accessible_nodes #np.unique(accessible_nodes)[:-1]
 
-		return accessible_nodes
-
+	# CHANGE THIS
 	def get_accessible_nodes(self, player_num):
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
-		#Make sure we remove every third element (insertion order from the multigraph)
 		player_nodes = list(np.array(list(player_edges.keys())).flatten())
+		# Remove every third element (insertion order from the multigraph)
 		player_nodes = set(player_nodes[0::3] + player_nodes[1::3])
 		return player_nodes
 
@@ -244,21 +294,32 @@ class Model():
 		if worlds is None:
 			worlds = self.graph.nodes
 
+		print('worlds:', worlds_of_strings(worlds))
 		# if there are no parentheses, then the query is atomic
 		if '(' not in query:
 			# Evaluate the query
 			# Parse the atomic query
 			query_cards = query.split(',')
+
+
+			query_cards = list(map(lambda x: card_dict[x], query_cards))
+			query_cards = np.array(query_cards)
+			na_filter = np.argwhere(query_cards!=45).flatten()
+			# print("NA filter",na_filter)
+			query_cards = query_cards[na_filter]
 			# print(query_cards)
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
-				for i in range(0,len(query_cards)):
-					if query_cards[i] != "NA":
-						if card_dict[query_cards[i]] != world_cards[i]:
-							return False
+				world_cards = np.array(world_cards)
+				# print(query_cards, world_cards[na_filter])
+				if (query_cards!=world_cards[na_filter]).all():
+					return False
+				# for i in range(0,len(query_cards)):
+					# if query_cards[i] != "NA":
+						# if card_dict[query_cards[i]] != world_cards[i]:
+							# return False
 			return True
 		else:
-			print(worlds)
 			op, sub1, sub2 = self.break_it_like_you_hate_it(query)#, worlds)
 			if op == '~':
 				return not self.query_model(sub1, worlds)
@@ -272,23 +333,30 @@ class Model():
 				#	Check if formula is true in all these nodes 
 				if len(worlds)==1:
 					nodes = self.get_accessible_nodes_from_world(int(op[1]), worlds[0])
+
+					print('# acc nodes:',len(nodes))
 					boo = True
 					for node in nodes:
-						# print(sub1)
-						# print("node", node)
 						boo = self.query_model(sub1, [node])
 						if not boo:
-							break
+							return boo
 					return boo
 				# N worlds left:
 				#	Check if the knowledge formula is true in all worlds
-				boo = True
-				for world in worlds:
-					# print(world)
-					boo = self.query_model(query, [world])
-					if not boo:
-						break
-				return boo
+				else:
+					boo = True
+					non_self_nodes, self_nodes = self.get_player_cliques(int(op[1]),worlds)
+					for world in non_self_nodes:
+						boo = self.query_model(sub1, [world])
+						if not boo:
+							return boo
+
+					for world in self_nodes:
+						boo = self.query_model(query, [world])
+						if not boo:
+							return boo
+
+					return boo
 			else:
 				print("Oops, something went terribly wrong...")
 
@@ -323,16 +391,22 @@ class Model():
 			for node in self.graph.nodes:
 				visible_hands = self.get_visible_hands(hands, p)
 				visible_world_hands = self.get_visible_hands(self.convert_node_to_cards(node), p)
+
 				if visible_hands == visible_world_hands:
 					player_nodes.append(node)
 			self.connect_nodes(player_nodes, p)
+		
+		self.add_self_loops()
+
+
 
 			
 	def connect_nodes(self, worlds, p):
 		"""
 		Adds accessibility relations for each player
 		"""
-		world_edges = itertools.combinations_with_replacement(worlds,2)
+		world_edges = itertools.combinations(worlds,2)
+
 		if p == 0:
 			self.graph.add_edges_from(world_edges, p0=1)
 		elif p == 1:
@@ -351,6 +425,7 @@ class Model():
 		for i in range(0, len(hands)):
 			if (i/3) == player_num:
 				continue
+			# will throw an error here if the deck configuration isn't possible	
 			del card_deck[card_deck.index(hands[i])]
 
 		return card_deck
@@ -398,10 +473,50 @@ def count_cards(card, discard_pile, stacks, hands):
 	# 	pass
 
 
-if __name__ == '__main__':
+def simple_model_test():
 	g = Game()
-	# # print(g.board.player_hands[0].color)
-	hands_int = [6,8,7,5,0,6,7,1,2]
+	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
+	hands = []
+	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
+	for i in range(0,len(hands_int)):
+		hands.append(Card(colors[Card.color_of_card(hands_int[i])],Card.num_of_card(hands_int[i])))
+
+	g.board.player_hands = hands
+
+	model = Model(3,3, g.board.player_hands)
+	model.graph = nx.MultiGraph()
+	nodes = [
+	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
+	'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
+
+	'B1,B3,B2,G1,R1,B1,B2,R2,R3', # 3: G1
+	'B1,B3,B2,R1,R1,B1,B2,R2,R3', # 3: R1
+
+	'B1,B3,B2,G3,R1,B1,B1,R2,R3', # 6: B1
+	'B1,B3,B2,G3,R1,B1,R1,R2,R3', # 6: R1
+
+	]
+
+
+	node_nums = []
+
+	for node in nodes:
+		node_nums.append(','.join(map(lambda x: str(card_dict[x]), node.split(','))))
+
+	model.graph.add_nodes_from(node_nums)
+	model.connect_nodes(node_nums[0:3], 0)
+	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
+	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
+	model.add_self_loops()
+	model.get_player_cliques(0, model.graph.nodes)
+
+	val = model.query_model("K2(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3))")#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
+	print(val)
+
+def model_test():
+	g = Game()
 	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
 	hands = []
 	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
@@ -414,17 +529,28 @@ if __name__ == '__main__':
 	
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
-	print(list(map(int,g.board.player_hands)))
-	val = model.query_model("K2(~(K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)))")#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
-	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 
+	val = model.query_model("~(K0(R1,R1,R1,G3,R1,B1,B2,R2,R3))")
+	# val = model.query_model("K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)")
+
+
+	#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
+	print(val)
+
+
+
+
+def main():
+	model_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
 
+	# 
+	# "K0 (~ (K0 p) & q)"
 
-	"K2(~)"
+	# "K2(~)"
 
-	print(val)
 	# just_save_it = len(model.get_accessible_nodes(0))
 	# card_num = Card.num_of_card(int(g.board.player_hands[1]))
 
@@ -503,6 +629,10 @@ if __name__ == '__main__':
 
 	# print(a.index(2))
 	# print(set(list(b)))
+
+
+if __name__ == '__main__':
+	main()
 # --- Model --
 # State construction
 # 
