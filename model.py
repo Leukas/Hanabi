@@ -160,7 +160,7 @@ class Model():
 				continue
 
 			player_card_count, player_color_count, player_number_count = count_cards(card, [], [], self.convert_node_to_cards(node_key[player_num*self.cards_per_player:(player_num+1)*self.cards_per_player]))
-			if (int(card) != node_key[player_num*3+hand_idx]
+			if (int(card) != int(node_key[player_num*3+hand_idx])
 			# update player's knowledge about other cards
 				# counting number of cards that are the same that the player considers possible in this world
 				# removing 1 because the card hasnt been removed yet from their hand
@@ -169,6 +169,7 @@ class Model():
 				or (color_count + player_color_count > 6)
 				# update player's knowledge about numbers 
 				or (number_count + player_number_count > (4-card.number)*3)):
+
 				self.graph.remove_node(node_key)
 			
 	def update_draw_card(self, card, player_num, hand_idx, discard_pile, stacks, hands):
@@ -429,7 +430,9 @@ def count_cards(card, discard_pile, stacks, hands):
 		for num in range(0,stacks[col_idx]):
 			all_cards.append(3*(col_idx)+num)
 
-
+	# print("card", card)
+	# print("int card", int(card))
+	# print(all_cards)
 	num_card = all_cards.count(int(card))
 
 	all_cards = np.array(all_cards).astype(np.int16)
@@ -567,12 +570,16 @@ def model_update_test():
 	model.add_self_loops()
 
 	model.update_discard_and_play(Card(Color.BLUE,1), player_num=0, hand_idx=0, 
-		discard_pile=[], stacks=[0,0,0], hands=g.board.player_hands)
+		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+
+
+	print(worlds_of_strings(model.graph.nodes))
 	# model.get_player_cliques(0, model.graph.nodes)
 
 
 def main():
-	model_query_test()
+	# model_query_test()
+	model_update_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
 
