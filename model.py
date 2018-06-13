@@ -111,10 +111,12 @@ class Model():
 	def get_player_hand(self, hands, player_idx):
 		return hands[player_idx*self.cards_per_player:(player_idx+1)*self.cards_per_player]
 
-	def get_player_cliques(self, player_num, worlds):
+	def get_player_cliques(self, player_num, worlds=None):
 		"""
 		Gets cliques of size > 1 and 1 for the specified player
 		"""
+		if worlds is None:
+			worlds = self.graph.nodes
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
 		player_edges = np.array(list(player_edges.keys()))
 		
@@ -179,20 +181,22 @@ class Model():
 		nodes_to_remove = set()
 
 		for i in range(0,self.num_players):
-			player_nodes = self.get_accessible_nodes(player_num)
+			player_nodes, _ = self.get_player_cliques(i)
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
 					player_hand = node[player_num*3:(player_num+1)*3]
-					partial_state = self.partial_state[:hand_idx] + player_hand[hand_idx+1:]
+					partial_state = player_hand[:hand_idx] + player_hand[hand_idx+1:]
 					cards_left = self.left_in_deck(player_num, discard_pile, stacks, hands, partial_state)
 
 					for c in cards_left:
-						player_hand[hand_idx] = c
-						node = self.convert_cards_to_node(player_hand)
+						node[player_num*3+hand_idx] = c
+						node = self.convert_cards_to_node(node)
 						nodes_to_add.add(node)
 			else:
+				# modifying the players knowledge who arent getting a new card
+				# modifies only the index of the new card
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
@@ -349,6 +353,11 @@ class Model():
 
 	def left_in_deck(self, player_num, discard_pile, stacks, hands, partial_state):
 		"""
+		This takes into account the possible world(partial_state) and gets all 
+		possible combinations of the possible hands. There is a longer way of doing 
+		this by not taking partial_state into account; by simply taking all 
+		combinations !
+
 		Partial state is the n-1 cards that the player has that they arent discarding
 		partial state is an int list
 		"""
@@ -361,8 +370,8 @@ class Model():
 				all_cards.append(3*(col_idx)+num)
 
 		all_cards.extend(partial_state)
-
-		cards_left = remove_known_cards(player_num, all_cards)
+		# this works since all_cards contains hands as the first 9 entries
+		cards_left = self.remove_known_cards(player_num, all_cards)
 		return cards_left
 
 	def reconnect_nodes(self, hands):
