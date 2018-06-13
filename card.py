@@ -16,7 +16,7 @@ class Color(IntEnum):
 class Card():
 	def __init__(self, color, number):
 		self.color = color
-		self.number = number
+		self.number = number # 1 - 3
 		# NO CARD = 
 		# COLOR = -1
 		# NUMBER = -1

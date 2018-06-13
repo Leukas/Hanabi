@@ -69,15 +69,12 @@ class Model():
 		"""
 		for p_idx in range(0,self.num_players):
 			card_deck = self.remove_known_cards(p_idx, self.get_visible_hands(hands, p_idx))
-			# if p_idx == 0:
-			# 	print("card deck:", card_deck)
 			# get all n-card combinations for each players
 			perms = itertools.permutations(card_deck, self.cards_per_player)
 			perms = set(list(perms))
 			worlds = []
 			for p in perms:
 				world = hands[0:p_idx*self.cards_per_player] + list(p) + hands[(p_idx+1)*self.cards_per_player:]
-				# world = ','.join(str(w) for w in world)
 				world = self.convert_cards_to_node(world)
 
 				# if the hand combination doesnt exist in the model, add it to the model
@@ -87,9 +84,6 @@ class Model():
 				
 				# if more than 1 player can access the same world, still need to add those edges into the graph
 				worlds.append(world)
-			# if p_idx == 0:
-			# 	print("Print thing", len(worlds))
-			# 	print(worlds)
 
 			self.connect_nodes(worlds, p_idx)
 			self.add_self_loops()
@@ -129,7 +123,6 @@ class Model():
 		non_self_player_nodes = set(list(non_self_player_edges[0::3]) + list(non_self_player_edges[1::3]))
 		self_player_nodes = set(list(self_player_edges[0::3]) + list(self_player_edges[1::3]))
 		self_player_nodes = self_player_nodes - non_self_player_nodes
-		# print(non_self_player_nodes, self_player_nodes)
 		return non_self_player_nodes, self_player_nodes
 
 	def get_accessible_nodes_from_world(self, player_num, world):
@@ -141,14 +134,17 @@ class Model():
 				accessible_nodes.add(edge[1])
 			elif edge[1] == world:
 				accessible_nodes.add(edge[0])
-		return accessible_nodes #np.unique(accessible_nodes)[:-1]
+		return accessible_nodes 
+	
 	# CHANGE THIS
 	def get_accessible_nodes(self, player_num):
-		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
-		player_nodes = list(np.array(list(player_edges.keys())).flatten())
-		# Remove every third element (insertion order from the multigraph)
-		player_nodes = set(player_nodes[0::3] + player_nodes[1::3])
-		return player_nodes
+		assert(1, 'Deprecated')
+		# get_player_cliques
+		# player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
+		# player_nodes = list(np.array(list(player_edges.keys())).flatten())
+		# # Remove every third element (insertion order from the multigraph)
+		# player_nodes = set(player_nodes[0::3] + player_nodes[1::3])
+		# return player_nodes
 
 	def update_discard_and_play(self, card, player_num, hand_idx, discard_pile, stacks, hands):
 		# the card that is discarded is still in the player's hand at this point, but also in the discard pile			
@@ -186,7 +182,7 @@ class Model():
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
-					player_hand = node[player_num*3:(player_num+1)*3]
+					player_hand = self.get_player_hand(node, player_num)
 					partial_state = player_hand[:hand_idx] + player_hand[hand_idx+1:]
 					cards_left = self.left_in_deck(player_num, discard_pile, stacks, hands, partial_state)
 
@@ -217,7 +213,7 @@ class Model():
 			y = 1,2,3 = 1,2,3 or = R,G,B
 
 		"""		
-		player_nodes = self.get_accessible_nodes(player_num)
+		player_nodes, _ = self.get_player_cliques(player_num)
 		player_hand = np.array(self.get_player_hand(hands, player_num))
 		nodes_to_remove = []
 		if clue[0] == 0: # NUMBER CLUE
@@ -230,7 +226,7 @@ class Model():
 				player_world_hand_nums = np.array(list(map(Card.num_of_card,player_world_hand)))
 				# print(num_idxs)
 				# print("Possible nums:", player_world_hand_nums)
-				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).all():
+				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).any():
 					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
 			# indices where cards are equal to num
@@ -238,11 +234,11 @@ class Model():
 			color_idxs = player_hand_colors==clue[1]
 			# print("Player's hand (colorbers):", player_hand_colors)
 			for node in player_nodes:
-				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_color)
+				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
 				player_world_hand_colors = np.array(list(map(Card.color_of_card,player_world_hand)))
 				# print(color_idxs)
 				# print("Possible colors:", player_world_hand_colors)
-				if (player_hand_colors[color_idxs] != player_world_hand_colors[color_idxs]).all():
+				if (player_hand_colors[color_idxs] != player_world_hand_colors[color_idxs]).any():
 					nodes_to_remove.append(node)		
 
 		self.graph.remove_nodes_from(nodes_to_remove)
@@ -361,7 +357,6 @@ class Model():
 		Partial state is the n-1 cards that the player has that they arent discarding
 		partial state is an int list
 		"""
-		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		all_cards = copy.deepcopy(hands)
 		all_cards.extend(map(int,discard_pile))
 
@@ -424,6 +419,7 @@ class Model():
 
 def count_cards(card, discard_pile, stacks, hands):
 	"""
+	Returning the number of cards, colors, and numbers from what's seen on the board
 	Hands = 6 value array not including the player's own cards
 	"""
 	all_cards = copy.deepcopy(hands)
@@ -463,7 +459,7 @@ def count_cards(card, discard_pile, stacks, hands):
 	# 	pass
 
 
-def simple_model_test():
+def simple_model_query_test():
 	g = Game()
 	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
 	hands = []
@@ -505,7 +501,7 @@ def simple_model_test():
 	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 	print(val)
 
-def model_test():
+def model_query_test():
 	g = Game()
 	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
 	hands = []
@@ -520,7 +516,7 @@ def model_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	# val = model.query_model("K1(K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3)))") # true
+	val = model.query_model("K1(K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3)))") # true
 	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
 	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
 
@@ -535,11 +531,48 @@ def model_test():
 	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 	print(val)
 
+def model_update_test():
+	g = Game()
+	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
+	hands = []
+	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
+	for i in range(0,len(hands_int)):
+		hands.append(Card(colors[Card.color_of_card(hands_int[i])],Card.num_of_card(hands_int[i])))
 
+	g.board.player_hands = hands
+
+	model = Model(3,3, g.board.player_hands)
+	model.graph = nx.MultiGraph()
+	nodes = [
+	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
+	'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
+
+	'B1,B3,B2,G1,R1,B1,B2,R2,R3', # 3: G1
+	'B1,B3,B2,R1,R1,B1,B2,R2,R3', # 3: R1
+
+	'B1,B3,B2,G3,R1,B1,B1,R2,R3', # 6: B1
+	'B1,B3,B2,G3,R1,B1,R1,R2,R3', # 6: R1
+	]
+
+	node_nums = []
+
+	for node in nodes:
+		node_nums.append(','.join(map(lambda x: str(card_dict[x]), node.split(','))))
+
+	model.graph.add_nodes_from(node_nums)
+	model.connect_nodes(node_nums[0:3], 0)
+	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
+	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
+	model.add_self_loops()
+
+	model.update_discard_and_play(Card(Color.BLUE,1), player_num=0, hand_idx=0, 
+		discard_pile=[], stacks=[0,0,0], hands=g.board.player_hands)
+	# model.get_player_cliques(0, model.graph.nodes)
 
 
 def main():
-	model_test()
+	model_query_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
 
