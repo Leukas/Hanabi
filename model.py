@@ -150,25 +150,26 @@ class Model():
 		# the card that is discarded is still in the player's hand at this point, but also in the discard pile			
 		# update the knowledge for the player whose card is discarded 
 		visible_hands = self.get_visible_hands(hands, player_num)
-		card_count, color_count, number_count = count_cards(card, discard_pile, stacks, visible_hands)
+		# card_count, color_count, number_count = count_cards(card, discard_pile, stacks, visible_hands)
 
 		# removing all nodes where the card is different
 		for node_key in list(self.graph.nodes.keys()):
-			
 			# Skip nodes that are not accessible by player
 			if (visible_hands != self.get_visible_hands(self.convert_node_to_cards(node_key),player_num)):
 				continue
 
-			player_card_count, player_color_count, player_number_count = count_cards(card, [], [], self.convert_node_to_cards(node_key[player_num*self.cards_per_player:(player_num+1)*self.cards_per_player]))
-			if (int(card) != int(node_key[player_num*3+hand_idx])
+			# player_card_count, player_color_count, player_number_count = count_cards(card, [], [], self.convert_node_to_cards(node_key[player_num*self.cards_per_player:(player_num+1)*self.cards_per_player]))
+			split_keys = node_key.split(',')
+			# print("sk_ind", split_keys[player_num*3+hand_idx])
+			if (int(card) != int(split_keys[player_num*3+hand_idx])):
 			# update player's knowledge about other cards
 				# counting number of cards that are the same that the player considers possible in this world
 				# removing 1 because the card hasnt been removed yet from their hand
-				or (card_count + player_card_count > 4-card.number)
+				# or (card_count + player_card_count > 4-card.number)
 				# update player's knowledge about colors
-				or (color_count + player_color_count > 6)
+				# or (color_count + player_color_count > 6)
 				# update player's knowledge about numbers 
-				or (number_count + player_number_count > (4-card.number)*3)):
+				# or (number_count + player_number_count > (4-card.number)*3)):
 
 				self.graph.remove_node(node_key)
 			
@@ -403,16 +404,18 @@ class Model():
 		elif p == 2:
 			self.graph.add_edges_from(world_edges, p2=1)
 
-	def remove_known_cards(self, player_num, hands):
+	def remove_known_cards(self, player_num, visible_cards):
 		"""
-		Removes all cards that player_num can see from hands
+		Removes all cards that player_num can see.
 		"""
+		# card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
-		for i in range(0, len(hands)):
+		for i in range(0, len(visible_cards)):
 			if (i/3) == player_num:
 				continue
-			# will throw an error here if the deck configuration isn't possible	
-			del card_deck[card_deck.index(hands[i])]
+			# will throw an error here if the deck configuration isn't possible
+			if int(card_deck.index(visible_cards[i])) != NC:	
+				del card_deck[card_deck.index(visible_cards[i])]
 
 		return card_deck
 
@@ -430,13 +433,11 @@ def count_cards(card, discard_pile, stacks, hands):
 		for num in range(0,stacks[col_idx]):
 			all_cards.append(3*(col_idx)+num)
 
-	# print("card", card)
-	# print("int card", int(card))
-	# print(all_cards)
 	num_card = all_cards.count(int(card))
 
 	all_cards = np.array(all_cards).astype(np.int16)
-	all_cards = all_cards[all_cards!=-1]
+	# removes any NC cards
+	all_cards = all_cards[all_cards!=NC]
 
 	num_color = len(all_cards[np.floor(all_cards/3)==(card.color.value-1)])
 	num_number = len(all_cards[all_cards%3==(card.number-1)])
@@ -569,12 +570,15 @@ def model_update_test():
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
 	model.add_self_loops()
 
-	model.update_discard_and_play(Card(Color.BLUE,1), player_num=0, hand_idx=0, 
-		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	# model.update_discard_and_play(Card(Color.BLUE,1), player_num=1, hand_idx=2, 
+		# discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	model.update_clue(player_num=1, clue=(0,3), hands=list(map(int,g.board.player_hands)))
 
 
 	print(worlds_of_strings(model.graph.nodes))
 	# model.get_player_cliques(0, model.graph.nodes)
+
+
 
 
 def main():

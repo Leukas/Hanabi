@@ -61,7 +61,7 @@ class Board():
 		"""
 		card = self.player_hands[player_num*3+hand_idx]
 		self.discard_pile.append(card)
-		# self.player_hands[player_num*3+hand_idx] = Card(-1, -1)
+		self.player_hands[player_num*3+hand_idx] = Card(-1, -1)
 		return card
 
 	def draw_card(self, player_num, hand_idx):
