@@ -300,9 +300,9 @@ class Model():
 		if worlds is None:
 			worlds = self.graph.nodes
 
-		# print('worlds:', worlds_of_strings(worlds))
 		# if there are no parentheses, then the query is atomic
 		if '(' not in query:
+			print('worlds:', worlds_of_strings(worlds))
 			# Evaluate the query
 			# Parse the atomic query
 			query_cards = query.split(',')
@@ -310,17 +310,17 @@ class Model():
 
 			query_cards = list(map(lambda x: card_dict[x], query_cards))
 			query_cards = np.array(query_cards)
-			# na_filter = np.argwhere(query_cards!=45).flatten()
+			na_filter = np.argwhere(query_cards!=45).flatten()
 			# print("NA filter",na_filter)
-			# query_cards = query_cards[na_filter]
+			query_cards = query_cards[na_filter]
 			# print(query_cards)
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
 				world_cards = np.array(world_cards)
-				print('cardz', query_cards, world_cards)
+				# print('cardz', query_cards, world_cards)
 				# print(query_cards!=world_cards[na_filter])
-				# if (query_cards!=world_cards[na_filter]).any():
-				if (query_cards!=world_cards).any():
+				if (query_cards!=world_cards[na_filter]).any():
+				# if (query_cards!=world_cards).any():
 					return False
 				# for i in range(0,len(query_cards)):
 					# if query_cards[i] != NA:
@@ -342,7 +342,7 @@ class Model():
 				if len(worlds)==1:
 					nodes = self.get_accessible_nodes_from_world(int(op[1]), worlds[0])
 
-					print('# acc nodes:',len(nodes))
+					# print('# acc nodes:',len(nodes))
 					boo = True
 					for node in nodes:
 						boo = self.query_model(sub1, hands, [node])
@@ -355,9 +355,9 @@ class Model():
 					boo = True
 					player_acc_nodes = self.get_accessible_nodes(int(op[1]))
 					for world in player_acc_nodes:
-						print('player world', world)
+						# print('player world', world)
 						boo = self.query_model(sub1, hands, [world])
-						print('aaaah you scared me', boo)
+						# print('aaaah you scared me', boo)
 						if not boo:
 							return boo
 					return boo
@@ -410,7 +410,7 @@ class Model():
 		"""
 		Adds accessibility relations for each player
 		"""
-		world_edges = itertools.combinations(worlds,2)
+		world_edges = itertools.combinations_with_replacement(worlds,2)
 
 		if p == 0:
 			self.graph.add_edges_from(world_edges, p0=1)
@@ -492,10 +492,10 @@ def simple_model_query_test():
 	model.graph = nx.MultiGraph()
 	nodes = [
 	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
-	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
-	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
-	# 'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
-	# 'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
+	# 'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	# 'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
+	'R1,B1,B2,G3,R1,B1,B2,R2,R3', # 0: R1
 
 	'B1,B3,B2,G1,R1,B1,B2,R2,R3', # 3: G1
 	'B1,B3,B2,R1,R1,B1,B2,R2,R3', # 3: R1
@@ -523,7 +523,7 @@ def simple_model_query_test():
 	# x = model.get_player_cliques(2, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
 	# print('cliques2', x)
 
-	val = model.query_model("K0(B1,B3,B2,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands)))#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	val = model.query_model("K1(K0(NA,B3,B2,G3,R1,B1,B2,R2,R3))", list(map(int,g.board.player_hands)))#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
 	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 	print(val)
 
@@ -542,7 +542,7 @@ def model_query_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	val = model.query_model("K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands))) # true
+	val = model.query_model("K1(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3))", list(map(int,g.board.player_hands))) # true
 	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
 	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
 
@@ -577,8 +577,8 @@ def model_update_test():
 	'B1,B3,B2,G1,NC,B1,B2,R1,R3', # 3: G1
 	'B1,B3,B2,R1,NC,B1,B2,R1,R3', # 3: R1
 
-	'B1,B3,B2,G3,NC,B1,B2,R1,R3', # 6: B1
-	'B1,B3,B2,G3,NC,B1,B2,R1,R3', # 6: R1
+	'B1,B3,B2,G3,NC,B1,B1,G1,R3', # 6: B1
+	'B1,B3,B2,G3,NC,B1,R1,G1,R3', # 6: R1
 	]
 
 	g.board.player_hands[4] = Card(Color.NO_COLOR, -1)
@@ -597,21 +597,31 @@ def model_update_test():
 
 	# model.get_player_cliques(2,list(map(int,g.board.player_hands)))
 
-	p_num = 2
-	card_replaced = 'B2'
+	p_num = 1
+	card_replaced = 'G3'
 	card_that_replaces = 'R1'
 	hand_index = 0
 
-	# model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
-	# 	discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
-	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*0
-		+[Card(string='G1')]*0+[Card(string='G2')]*0+[Card(string='G3')]*0
-		+[Card(string='B1')]*0+[Card(string='B2')]*1+[Card(string='B3')]*0))
+	print(worlds_of_strings(model.graph.nodes))
+	model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
+		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*2
+		+[Card(string='G1')]*3+[Card(string='G2')]*1+[Card(string='G3')]*0
+		+[Card(string='B1')]*1+[Card(string='B2')]*0+[Card(string='B3')]*0))
+
+	g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
 
 	print(worlds_of_strings(model.graph.nodes))
-	# g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
-	model.update_clue(player_num=1, clue=(1,2), hands=list(map(int,g.board.player_hands)))
-	# model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	NUMBER_CLUE = 0
+	COLOR_CLUE = 1
+
+
+	RED = 1
+	GREEN = 2
+	BLUE = 3
+
+	# model.update_clue(player_num=2, clue=(COLOR_CLUE,RED), hands=list(map(int,g.board.player_hands)))
+	model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
 
 	print(worlds_of_strings(model.graph.nodes))
 	# # model.get_player_cliques(0, model.graph.nodes)
@@ -620,8 +630,8 @@ def model_update_test():
 
 
 def main():
-	simple_model_query_test()
-	# model_query_test()
+	# simple_model_query_test()
+	model_query_test()
 	# model_update_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
