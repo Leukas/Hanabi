@@ -184,7 +184,7 @@ class Model():
 		nodes_to_remove = set()
 
 		for i in range(0,self.num_players):
-			player_nodes, _ = self.get_player_cliques(i, hands)
+			player_nodes, _ = self.get_player_cliques(i, hands=hands)
 			# print('player_nodes', player_nodes)
 			if i == player_num:
 				for n in player_nodes:
@@ -222,13 +222,14 @@ class Model():
 			y = 1,2,3 = 1,2,3 or = R,G,B
 
 		"""		
-		player_nodes, _ = self.get_player_cliques(player_num)
+		player_nodes, _ = self.get_player_cliques(player_num, hands=hands)
 		player_hand = np.array(self.get_player_hand(hands, player_num))
 		nodes_to_remove = []
 		if clue[0] == 0: # NUMBER CLUE
 			# indices where cards are equal to num
 			player_hand_nums = np.array(list(map(Card.num_of_card,player_hand)))
 			num_idxs = player_hand_nums==clue[1]
+			not_num_idxs = player_hand_nums!=clue[1]
 			# print("Player's hand (numbers):", player_hand_nums)
 			for node in player_nodes:
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
@@ -237,10 +238,14 @@ class Model():
 				# print("Possible nums:", player_world_hand_nums)
 				if (player_hand_nums[num_idxs] != player_world_hand_nums[num_idxs]).any():
 					nodes_to_remove.append(node)
+				# If clue number 1, removes R1,R1,R1 if actual hand has 2 ones.
+				if np.array(player_world_hand_nums[not_num_idxs] == np.array([clue[1]]*np.sum(not_num_idxs))).any():
+					nodes_to_remove.append(node)
 		else: # COLOR CLUE	
 			# indices where cards are equal to num
 			player_hand_colors = np.array(list(map(Card.color_of_card,player_hand)))
 			color_idxs = player_hand_colors==clue[1]
+			not_color_idxs = player_hand_colors!=clue[1]
 			# print("Player's hand (colorbers):", player_hand_colors)
 			for node in player_nodes:
 				player_world_hand = self.get_player_hand(self.convert_node_to_cards(node), player_num)
@@ -249,6 +254,10 @@ class Model():
 				# print("Possible colors:", player_world_hand_colors)
 				if (player_hand_colors[color_idxs] != player_world_hand_colors[color_idxs]).any():
 					nodes_to_remove.append(node)		
+				# If Red clue, removes R1,R1,R1 if actual hand has 2 reds.
+				if np.array(player_world_hand_colors[not_color_idxs] == np.array([clue[1]]*np.sum(not_color_idxs))).any():
+					nodes_to_remove.append(node)
+
 
 		self.graph.remove_nodes_from(nodes_to_remove)
 
@@ -278,6 +287,11 @@ class Model():
 				op = char
 				sub1 = formula[i+2:len(formula)-1]
 				return op, sub1, sub2
+	
+	@staticmethod
+	def check_formula_at_world(formula, world):
+		"""
+		"""
 
 	def query_model(self, query, hands, worlds = None):
 		"""
@@ -288,7 +302,7 @@ class Model():
 		if worlds is None:
 			worlds = self.graph.nodes
 
-		print('worlds:', worlds_of_strings(worlds))
+		# print('worlds:', worlds_of_strings(worlds))
 		# if there are no parentheses, then the query is atomic
 		if '(' not in query:
 			# Evaluate the query
@@ -304,25 +318,25 @@ class Model():
 			# print(query_cards)
 			for world in worlds:
 				world_cards = self.convert_node_to_cards(world)
-				# world_cards = np.array(world_cards)
-				# print(query_cards, world_cards[na_filter])
+				world_cards = np.array(world_cards)
+				print('cardz', query_cards, world_cards)
 				# print(query_cards!=world_cards[na_filter])
 				# if (query_cards!=world_cards[na_filter]).any():
 				if (query_cards!=world_cards).any():
 					return False
 				# for i in range(0,len(query_cards)):
-					# if query_cards[i] != "NA":
-						# if card_dict[query_cards[i]] != world_cards[i]:
+					# if query_cards[i] != NA:
+						# if query_cards[i] != world_cards[i]:
 							# return False
 			return True
 		else:
 			op, sub1, sub2 = self.break_it_like_you_hate_it(query)#, worlds)
 			if op == '~':
-				return not self.query_model(sub1, worlds)
+				return not self.query_model(sub1, hands, worlds)
 			elif op == "&":
-				return self.query_model(sub1, worlds) and self.query_model(sub2, worlds)
+				return self.query_model(sub1, hands, worlds) and self.query_model(sub2, hands, worlds)
 			elif op == "|":
-				return self.query_model(sub1, worlds) or self.query_model(sub2, worlds)
+				return self.query_model(sub1, hands, worlds) or self.query_model(sub2, hands, worlds)
 			elif op[0] == 'K':
 				# 1 world left: 
 				#	Get all accessible nodes to agent 
@@ -333,7 +347,7 @@ class Model():
 					print('# acc nodes:',len(nodes))
 					boo = True
 					for node in nodes:
-						boo = self.query_model(sub1, [node])
+						boo = self.query_model(sub1, hands, [node])
 						if not boo:
 							return boo
 					return boo
@@ -341,14 +355,19 @@ class Model():
 				#	Check if the knowledge formula is true in all worlds
 				else:
 					boo = True
-					non_self_nodes, self_nodes = self.get_player_cliques(int(op[1]),worlds)
+					non_self_nodes, self_nodes = self.get_player_cliques(int(op[1]), hands=hands, worlds=worlds)
+					print('clique stuff', non_self_nodes, self_nodes)
 					for world in non_self_nodes:
-						boo = self.query_model(sub1, [world])
+						print('player world', world)
+						boo = self.query_model(sub1, hands, [world])
+						print('aaaah you scared me', boo)
 						if not boo:
 							return boo
 
 					for world in self_nodes:
-						boo = self.query_model(query, [world])
+						print('non-player world', world)
+						boo = self.query_model(query, hands, [world])
+						print('whoaaaa you scared me', boo)
 						if not boo:
 							return boo
 
@@ -484,8 +503,10 @@ def simple_model_query_test():
 	model.graph = nx.MultiGraph()
 	nodes = [
 	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
-	'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
-	'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
+	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
+	# 'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
+	# 'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
 
 	'B1,B3,B2,G1,R1,B1,B2,R2,R3', # 3: G1
 	'B1,B3,B2,R1,R1,B1,B2,R2,R3', # 3: R1
@@ -506,9 +527,14 @@ def simple_model_query_test():
 	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
 	model.add_self_loops()
-	model.get_player_cliques(0, model.graph.nodes)
+	x = model.get_player_cliques(0, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
+	print('cliques0', x)
+	x = model.get_player_cliques(1, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
+	print('cliques1', x)
+	x = model.get_player_cliques(2, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
+	print('cliques2', x)
 
-	val = model.query_model("K2(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3))")#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	val = model.query_model("K0(B1,B3,B2,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands)))#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
 	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 	print(val)
 
@@ -527,7 +553,7 @@ def model_query_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	val = model.query_model("K1(K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3)))") # true
+	val = model.query_model("K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands))) # true
 	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
 	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
 
@@ -544,7 +570,7 @@ def model_query_test():
 
 def model_update_test():
 	g = Game()
-	hands_int = [B1,B3,B2,G3,R1,B1,B2,R2,R3]
+	hands_int = [B1,B3,B2,G3,R1,B1,B2,R1,R3]
 	hands = []
 	colors = [0, Color.RED, Color.GREEN, Color.BLUE]
 	for i in range(0,len(hands_int)):
@@ -555,15 +581,15 @@ def model_update_test():
 	model = Model(3,3, g.board.player_hands)
 	model.graph = nx.MultiGraph()
 	nodes = [
-	'B1,B3,B2,G3,NC,B1,B2,R2,R3',
-	'G1,B3,B2,G3,NC,B1,B2,R2,R3', # 0: G1
-	'R1,B3,B2,G3,NC,B1,B2,R2,R3', # 0: R1
+	'B1,B3,B2,G3,NC,B1,B2,R1,R3',
+	'G1,B3,B2,G3,NC,B1,B2,R1,R3', # 0: G1
+	'R1,B3,B2,G3,NC,B1,B2,R1,R3', # 0: R1
 
-	'B1,B3,B2,G1,NC,B1,B2,R2,R3', # 3: G1
-	'B1,B3,B2,R1,NC,B1,B2,R2,R3', # 3: R1
+	'B1,B3,B2,G1,NC,B1,B2,R1,R3', # 3: G1
+	'B1,B3,B2,R1,NC,B1,B2,R1,R3', # 3: R1
 
-	'B1,B3,B2,G3,NC,B1,B1,R2,R3', # 6: B1
-	'B1,B3,B2,G3,NC,B1,R1,R2,R3', # 6: R1
+	'B1,B3,B2,G3,NC,B1,B2,R1,R3', # 6: B1
+	'B1,B3,B2,G3,NC,B1,B2,R1,R3', # 6: R1
 	]
 
 	g.board.player_hands[4] = Card(Color.NO_COLOR, -1)
@@ -587,16 +613,16 @@ def model_update_test():
 	card_that_replaces = 'R1'
 	hand_index = 0
 
-	model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
-		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	# model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
+	# 	discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
 	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*0
 		+[Card(string='G1')]*0+[Card(string='G2')]*0+[Card(string='G3')]*0
 		+[Card(string='B1')]*0+[Card(string='B2')]*1+[Card(string='B3')]*0))
 
 	print(worlds_of_strings(model.graph.nodes))
-	g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
-	# model.update_clue(player_num=0, clue=(1,3), hands=list(map(int,g.board.player_hands)))
-	model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	# g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
+	model.update_clue(player_num=1, clue=(1,2), hands=list(map(int,g.board.player_hands)))
+	# model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
 
 	print(worlds_of_strings(model.graph.nodes))
 	# # model.get_player_cliques(0, model.graph.nodes)
@@ -605,8 +631,9 @@ def model_update_test():
 
 
 def main():
+	simple_model_query_test()
 	# model_query_test()
-	model_update_test()
+	# model_update_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
 
