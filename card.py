@@ -14,13 +14,23 @@ class Color(IntEnum):
 
 
 class Card():
-	def __init__(self, color, number):
-		self.color = color
-		self.number = number # 1 - 3
+	def __init__(self, color=-1, number=-1, string=None):
+		if string is None:
+			self.color = color
+			self.number = number # 1 - 3
+		else:
+			if string[0] == 'R':
+				self.color = Color.RED
+			elif string[0] == 'G':
+				self.color = Color.GREEN
+			elif string[0] == 'B':
+				self.color = Color.BLUE
+			self.number = int(string[1])
 		# NO CARD = 
 		# COLOR = -1
 		# NUMBER = -1
 		# INT VALUE = -1
+
 
 	def __str__(self):
 		return "Color: {}, Number: {}".format(self.color.name, self.number)
@@ -81,6 +91,8 @@ class Deck():
 
 
 if __name__ == '__main__':
-	d = Deck(3,(3,2,1))
-	d.shuffle()
-	print(d.draw())
+	# d = Deck(3,(3,2,1))
+	# d.shuffle()
+	# print(d.draw())
+	c = Card(Color.NO_COLOR,-1)
+	print(int(c))

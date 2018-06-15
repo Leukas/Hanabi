@@ -105,7 +105,7 @@ class Model():
 	def get_player_hand(self, hands, player_idx):
 		return hands[player_idx*self.cards_per_player:(player_idx+1)*self.cards_per_player]
 
-	def get_player_cliques(self, player_num, worlds=None):
+	def get_player_cliques(self, player_num, hands, worlds=None):
 		"""
 		Gets cliques of size > 1 and 1 for the specified player
 		"""
@@ -123,6 +123,10 @@ class Model():
 		non_self_player_nodes = set(list(non_self_player_edges[0::3]) + list(non_self_player_edges[1::3]))
 		self_player_nodes = set(list(self_player_edges[0::3]) + list(self_player_edges[1::3]))
 		self_player_nodes = self_player_nodes - non_self_player_nodes
+		true_node = self.convert_cards_to_node(hands)
+		non_self_player_nodes.add(true_node)
+		# print('player_nodes', non_self_player_nodes, player_num)
+		self_player_nodes -= {true_node}
 		return non_self_player_nodes, self_player_nodes
 
 	def get_accessible_nodes_from_world(self, player_num, world):
@@ -173,13 +177,15 @@ class Model():
 
 				self.graph.remove_node(node_key)
 			
-	def update_draw_card(self, card, player_num, hand_idx, discard_pile, stacks, hands):
-		# Hand is now updated with new card
+	def update_draw_card(self, player_num, hand_idx, discard_pile, stacks, hands):
+		# Hand is already updated with the new card drawn
+
 		nodes_to_add = set()
 		nodes_to_remove = set()
 
 		for i in range(0,self.num_players):
-			player_nodes, _ = self.get_player_cliques(i)
+			player_nodes, _ = self.get_player_cliques(i, hands)
+			# print('player_nodes', player_nodes)
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
@@ -190,11 +196,12 @@ class Model():
 
 					for c in cards_left:
 						node[player_num*3+hand_idx] = c
-						node = self.convert_cards_to_node(node)
-						nodes_to_add.add(node)
+						node_to_add = self.convert_cards_to_node(node)
+						nodes_to_add.add(node_to_add)
 			else:
 				# modifying the players knowledge who arent getting a new card
 				# modifies only the index of the new card
+				card = hands[player_num*3+hand_idx]
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
@@ -272,7 +279,7 @@ class Model():
 				sub1 = formula[i+2:len(formula)-1]
 				return op, sub1, sub2
 
-	def query_model(self, query, worlds = None):
+	def query_model(self, query, hands, worlds = None):
 		"""
 		Query is of form : (((K0(p)) | ((r) & (q))) | (~ (q))
 		Example: Player 2 knows Player 1 has a red card
@@ -411,10 +418,10 @@ class Model():
 		# card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		for i in range(0, len(visible_cards)):
-			if (i/3) == player_num:
+			if int(i/3) == player_num:
 				continue
 			# will throw an error here if the deck configuration isn't possible
-			if int(card_deck.index(visible_cards[i])) != NC:	
+			if int(visible_cards[i]) != NC:	
 				del card_deck[card_deck.index(visible_cards[i])]
 
 		return card_deck
@@ -548,17 +555,18 @@ def model_update_test():
 	model = Model(3,3, g.board.player_hands)
 	model.graph = nx.MultiGraph()
 	nodes = [
-	'B1,B3,B2,G3,R1,B1,B2,R2,R3',
-	'G1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: G1
-	'R1,B3,B2,G3,R1,B1,B2,R2,R3', # 0: R1
+	'B1,B3,B2,G3,NC,B1,B2,R2,R3',
+	'G1,B3,B2,G3,NC,B1,B2,R2,R3', # 0: G1
+	'R1,B3,B2,G3,NC,B1,B2,R2,R3', # 0: R1
 
-	'B1,B3,B2,G1,R1,B1,B2,R2,R3', # 3: G1
-	'B1,B3,B2,R1,R1,B1,B2,R2,R3', # 3: R1
+	'B1,B3,B2,G1,NC,B1,B2,R2,R3', # 3: G1
+	'B1,B3,B2,R1,NC,B1,B2,R2,R3', # 3: R1
 
-	'B1,B3,B2,G3,R1,B1,B1,R2,R3', # 6: B1
-	'B1,B3,B2,G3,R1,B1,R1,R2,R3', # 6: R1
+	'B1,B3,B2,G3,NC,B1,B1,R2,R3', # 6: B1
+	'B1,B3,B2,G3,NC,B1,R1,R2,R3', # 6: R1
 	]
 
+	g.board.player_hands[4] = Card(Color.NO_COLOR, -1)
 	node_nums = []
 
 	for node in nodes:
@@ -570,13 +578,28 @@ def model_update_test():
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
 	model.add_self_loops()
 
-	# model.update_discard_and_play(Card(Color.BLUE,1), player_num=1, hand_idx=2, 
-		# discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
-	model.update_clue(player_num=1, clue=(0,3), hands=list(map(int,g.board.player_hands)))
+	print(list(map(int,g.board.player_hands)))
 
+	# model.get_player_cliques(2,list(map(int,g.board.player_hands)))
+
+	p_num = 2
+	card_replaced = 'B2'
+	card_that_replaces = 'R1'
+	hand_index = 0
+
+	model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
+		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*0
+		+[Card(string='G1')]*0+[Card(string='G2')]*0+[Card(string='G3')]*0
+		+[Card(string='B1')]*0+[Card(string='B2')]*1+[Card(string='B3')]*0))
 
 	print(worlds_of_strings(model.graph.nodes))
-	# model.get_player_cliques(0, model.graph.nodes)
+	g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
+	# model.update_clue(player_num=0, clue=(1,3), hands=list(map(int,g.board.player_hands)))
+	model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+
+	print(worlds_of_strings(model.graph.nodes))
+	# # model.get_player_cliques(0, model.graph.nodes)
 
 
 
