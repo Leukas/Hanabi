@@ -86,17 +86,23 @@ class Model():
 				worlds.append(world)
 
 			self.connect_nodes(worlds, p_idx)
-			# self.add_self_loops()
+			self.add_self_loops()
 
-	# def add_self_loops(self):
-	# 	self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p0=1)
-	# 	self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p1=1)
-	# 	self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p2=1)
+	def add_self_loops(self):
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p0=1)
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p1=1)
+		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p2=1)
 
 	def convert_cards_to_node(self, cards):
+		"""
+		Converts [1,1,1] to '1,1,1'
+		"""
 		return ','.join(str(w) for w in cards)
 
 	def convert_node_to_cards(self, node):
+		"""
+		Converts '1,1,1' to [1,1,1]
+		"""
 		return list(map(int, node.split(',')))
 
 	def get_visible_hands(self, hands, player_idx):
@@ -130,6 +136,7 @@ class Model():
 	# 	return non_self_player_nodes, self_player_nodes
 
 	def get_accessible_nodes_from_world(self, player_num, world):
+		assert isinstance(world,str), 'World must be a string.'
 		player_edges = nx.get_edge_attributes(self.graph, 'p' + str(player_num))
 
 		accessible_nodes = set()
@@ -175,15 +182,17 @@ class Model():
 
 				self.graph.remove_node(node_key)
 			
-	def update_draw_card(self, player_num, hand_idx, discard_pile, stacks, hands):
-		# Hand is already updated with the new card drawn
+	def update_draw_card(self, card, player_num, hand_idx, discard_pile, stacks, hands):
+		# Hand is the old hand without the new card
 
 		nodes_to_add = set()
 		nodes_to_remove = set()
 
+		# print('hands', hands)
 		for i in range(0,self.num_players):
-			player_nodes = self.get_accessible_nodes(i)
-			# print('player_nodes', player_nodes)
+
+			player_nodes = self.get_accessible_nodes_from_world(i,self.convert_cards_to_node(hands))
+			print('player_nodes', player_nodes)
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
@@ -199,7 +208,7 @@ class Model():
 			else:
 				# modifying the players knowledge who arent getting a new card
 				# modifies only the index of the new card
-				card = hands[player_num*3+hand_idx]
+				# card = hands[player_num*3+hand_idx]
 				for n in player_nodes:
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
@@ -220,7 +229,8 @@ class Model():
 			y = 1,2,3 = 1,2,3 or = R,G,B
 
 		"""		
-		player_nodes = self.get_accessible_nodes(player_num)
+		player_nodes = self.get_accessible_nodes_from_world(player_num, self.convert_cards_to_node(hands))
+		print('player_nodes', player_nodes)
 		player_hand = np.array(self.get_player_hand(hands, player_num))
 		nodes_to_remove = []
 		if clue[0] == 0: # NUMBER CLUE
@@ -290,6 +300,7 @@ class Model():
 	def check_formula_at_world(formula, world):
 		"""
 		"""
+		pass
 
 	def query_model(self, query, hands, worlds = None):
 		"""
@@ -328,6 +339,7 @@ class Model():
 							# return False
 			return True
 		else:
+
 			op, sub1, sub2 = self.break_it_like_you_hate_it(query)#, worlds)
 			if op == '~':
 				return not self.query_model(sub1, hands, worlds)
@@ -339,8 +351,9 @@ class Model():
 				# 1 world left: 
 				#	Get all accessible nodes to agent 
 				#	Check if formula is true in all these nodes 
-				if len(worlds)==1:
-					nodes = self.get_accessible_nodes_from_world(int(op[1]), worlds[0])
+				# if len(worlds)==1:
+				for world in worlds:
+					nodes = self.get_accessible_nodes_from_world(int(op[1]), world)
 
 					# print('# acc nodes:',len(nodes))
 					boo = True
@@ -351,16 +364,16 @@ class Model():
 					return boo
 				# N worlds left:
 				#	Check if the knowledge formula is true in all worlds
-				else:
-					boo = True
-					player_acc_nodes = self.get_accessible_nodes(int(op[1]))
-					for world in player_acc_nodes:
-						# print('player world', world)
-						boo = self.query_model(sub1, hands, [world])
-						# print('aaaah you scared me', boo)
-						if not boo:
-							return boo
-					return boo
+				# else:
+				# 	boo = True
+				# 	# player_acc_nodes = self.get_accessible_nodes_from_world(int(op[1]), self.convert_cards_to_node() )
+				# 	for world in worlds:
+				# 		# print('player world', world)
+				# 		boo = self.query_model(query, hands, [world])
+				# 		# print('aaaah you scared me', boo)
+				# 		if not boo:
+				# 			return boo
+				# 	return boo
 			else:
 				print("Oops, something went terribly wrong...")
 
@@ -404,13 +417,14 @@ class Model():
 					player_nodes.append(node)
 			self.connect_nodes(player_nodes, p)
 		
-		# self.add_self_loops()
+		self.add_self_loops()
 			
 	def connect_nodes(self, worlds, p):
 		"""
 		Adds accessibility relations for each player
 		"""
-		world_edges = itertools.combinations_with_replacement(worlds,2)
+		world_edges = itertools.combinations(worlds,2)
+		# world_edges = itertools.combinations_with_replacement(worlds,2)
 
 		if p == 0:
 			self.graph.add_edges_from(world_edges, p0=1)
@@ -515,7 +529,8 @@ def simple_model_query_test():
 	model.connect_nodes(node_nums[0:3], 0)
 	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
-	# model.add_self_loops()
+	model.add_self_loops()
+	# print('acc nodes', model.get_accessible_nodes_from_world(2,list(map(int,g.board.player_hands))))
 	# x = model.get_player_cliques(0, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
 	# print('cliques0', x)
 	# x = model.get_player_cliques(1, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
@@ -542,7 +557,7 @@ def model_query_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	val = model.query_model("K1(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3))", list(map(int,g.board.player_hands))) # true
+	val = model.query_model("K2(K1(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)))", list(map(int,g.board.player_hands))) # true
 	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
 	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
 
@@ -591,7 +606,9 @@ def model_update_test():
 	model.connect_nodes(node_nums[0:3], 0)
 	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
-	# model.add_self_loops()
+	model.add_self_loops()
+	hand_format = model.convert_cards_to_node(list(map(int,g.board.player_hands)))
+	print('acc nodes', model.get_accessible_nodes_from_world(2,hand_format))
 
 	print(list(map(int,g.board.player_hands)))
 
@@ -605,11 +622,10 @@ def model_update_test():
 	print(worlds_of_strings(model.graph.nodes))
 	model.update_discard_and_play(Card(string=card_replaced), player_num=p_num, hand_idx=hand_index, 
 		discard_pile=[], stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
-	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*2
-		+[Card(string='G1')]*3+[Card(string='G2')]*1+[Card(string='G3')]*0
+	discard_pile = list(map(int,[Card(string='R1')]*1+[Card(string='R2')]*1
+		+[Card(string='G1')]*2+[Card(string='G2')]*1+[Card(string='G3')]*0
 		+[Card(string='B1')]*1+[Card(string='B2')]*0+[Card(string='B3')]*0))
 
-	g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
 
 	print(worlds_of_strings(model.graph.nodes))
 	NUMBER_CLUE = 0
@@ -621,7 +637,8 @@ def model_update_test():
 	BLUE = 3
 
 	# model.update_clue(player_num=2, clue=(COLOR_CLUE,RED), hands=list(map(int,g.board.player_hands)))
-	model.update_draw_card(player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	model.update_draw_card(card=Card(string=card_that_replaces), player_num=p_num, hand_idx=hand_index, discard_pile=discard_pile, stacks=[0,0,0], hands=list(map(int,g.board.player_hands)))
+	g.board.player_hands[p_num*3+hand_index]=Card(string=card_that_replaces)
 
 	print(worlds_of_strings(model.graph.nodes))
 	# # model.get_player_cliques(0, model.graph.nodes)
