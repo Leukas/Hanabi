@@ -1,7 +1,7 @@
 # player.py
 import numpy as np
 from card import *
-from model import *
+from model import Model
 from enum import IntEnum
 
 class Action(IntEnum):
@@ -89,7 +89,8 @@ class Game():
 		for i in range(0,num_players):
 			self.players.append(Player())
 		if initialize_model:
-			self.model = Model(3,3, self.board.player_hands)
+			# self.model = Model(3,3, self.board.player_hands)
+			pass
 
 	def play_game(self):
 		# should include that the last player who draws a card gets to play again 
