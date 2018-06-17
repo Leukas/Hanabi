@@ -5,6 +5,8 @@ import numpy as np
 import networkx as nx
 from enum import Enum
 import copy
+import pickle
+from card import Card
 
 NA = 45 # Card doesnt matter
 NC = -1 # No Card
@@ -53,20 +55,27 @@ def worlds_of_numbers(nodes):
 	return node_nums
 
 class Model():
-	def __init__(self, num_players, cards_per_player, player_hands):
+	def __init__(self, num_players, cards_per_player, player_hands, initialize=True):
 		print("Creating nodes...")
 		self.graph = nx.MultiGraph()
 		self.num_players = num_players
 		self.cards_per_player = 2#cards_per_player
 		print("Nodes created.")
-		self.initialize_model(list(map(int,player_hands)))
+		if initialize:
+			self.initialize_model(list(map(int,player_hands)))
+		else:
+			self.load_model('model.bin')
 		print("Model initialized.")
+
+	def load_model(self, filepath):
+		file = open(filepath,'rb')
+		self.graph = pickle.load(file)
 
 	def initialize_model(self, hands):
 		"""
 		Hands = 9 number array following CardDigit
 		"""
-		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B1]
+		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 #+ [G2]*2 #+ [G3] #+ [B1]*3 + [B2]*2 + [B1]
 		perms = itertools.permutations(card_deck, self.cards_per_player*self.num_players)
 		perms = set(list(perms))
 		perms = np.array(list(perms))
@@ -96,20 +105,25 @@ class Model():
 					if (n1 == n2):
 						if p_idx == 0:
 							self.graph.add_edge(node1,node2,p0=1)
-						if p_idx == 1:
+						elif p_idx == 1:
 							self.graph.add_edge(node1,node2,p1=1)
-						if p_idx == 2:		
+						elif p_idx == 2:		
 							self.graph.add_edge(node1,node2,p2=1)
 
-
+		output_file = open('model.bin', mode='wb')
+		pickle.dump(self.graph, output_file)
+		output_file.close()
+		print("Done initialising")
 			# print(perms[:,0:p_idx*self.cards_per_player].shape)
 			# print(perms[:,(p_idx+1)*self.cards_per_player:].shape)
 			# player_visible_worlds = np.concatenate((perms[:,0:p_idx*self.cards_per_player],perms[:,(p_idx+1)*self.cards_per_player:]), axis=1)
 			# _, idxs = np.unique(player_visible_worlds, return_index=True, axis=0)
 			# mask = np.ones(perms.shape[0])
 			# mask[idxs] = 0
-			# mask = mask[mask==1].astype(bool)
+			# mask = mask.astype(bool)
 			# non_unique_ones = perms[mask]
+			# player_visible_worlds = player_visible_worlds[mask]
+
 			# print(non_unique_ones)
 			# # print(mask.max())
 			# print(uniques.shape, idxs.shape)
@@ -243,7 +257,7 @@ class Model():
 		for i in range(0,self.num_players):
 
 			player_nodes = self.get_accessible_nodes_from_world(i,self.convert_cards_to_node(hands))
-			print('player_nodes', player_nodes)
+			print('player_nodes', worlds_of_strings(player_nodes))
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
@@ -266,6 +280,7 @@ class Model():
 					node[player_num*self.cards_per_player+hand_idx] = int(card)
 					node = self.convert_cards_to_node(node)
 					nodes_to_add.add(node)
+				print('some comment', i, nodes_to_add, nodes_to_remove)
 
 		self.graph.remove_nodes_from(nodes_to_remove)
 		self.graph.add_nodes_from(nodes_to_add)
@@ -469,7 +484,7 @@ class Model():
 
 		for col_idx in range(0,len(stacks)):
 			for num in range(0,stacks[col_idx]):
-				all_cards.append(3*(col_idx)+num)
+				all_cards.append(len(stacks)*(col_idx)+num)
 
 		all_cards.extend(partial_state)
 		# this works since all_cards contains hands as the first 9 entries
@@ -517,7 +532,7 @@ class Model():
 		# card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		card_deck = [R1]*3 + [R2]*2 + [R3] + [G1]*3 + [G2]*2 + [G3] + [B1]*3 + [B2]*2 + [B3]
 		for i in range(0, len(visible_cards)):
-			if int(i/3) == player_num:
+			if int(i/self.cards_per_player) == player_num:
 				continue
 			# will throw an error here if the deck configuration isn't possible
 			if int(visible_cards[i]) != NC:	
@@ -537,7 +552,7 @@ def count_cards(card, discard_pile, stacks, hands):
 	
 	for col_idx in range(0,len(stacks)):
 		for num in range(0,stacks[col_idx]):
-			all_cards.append(3*(col_idx)+num)
+			all_cards.append(self.cards_per_player*(col_idx)+num)
 
 	num_card = all_cards.count(int(card))
 
@@ -545,8 +560,8 @@ def count_cards(card, discard_pile, stacks, hands):
 	# removes any NC cards
 	all_cards = all_cards[all_cards!=NC]
 
-	num_color = len(all_cards[np.floor(all_cards/3)==(card.color.value-1)])
-	num_number = len(all_cards[all_cards%3==(card.number-1)])
+	num_color = len(all_cards[np.floor(all_cards/self.cards_per_player)==(card.color.value-1)])
+	num_number = len(all_cards[all_cards%self.cards_per_player==(card.number-1)])
 
 	return num_card, num_color, num_number
 
