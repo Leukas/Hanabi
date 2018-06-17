@@ -314,30 +314,41 @@ class Model():
 		# if there are no parentheses, then the query is atomic
 		if '(' not in query:
 			print('worlds:', worlds_of_strings(worlds))
+			worlds = worlds_of_strings(worlds)
 			# Evaluate the query
 			# Parse the atomic query
-			query_cards = query.split(',')
-
-
-			query_cards = list(map(lambda x: card_dict[x], query_cards))
-			query_cards = np.array(query_cards)
-			na_filter = np.argwhere(query_cards!=45).flatten()
-			# print("NA filter",na_filter)
-			query_cards = query_cards[na_filter]
-			# print(query_cards)
 			for world in worlds:
-				world_cards = self.convert_node_to_cards(world)
-				world_cards = np.array(world_cards)
-				# print('cardz', query_cards, world_cards)
-				# print(query_cards!=world_cards[na_filter])
-				if (query_cards!=world_cards[na_filter]).any():
-				# if (query_cards!=world_cards).any():
-					return False
-				# for i in range(0,len(query_cards)):
-					# if query_cards[i] != NA:
-						# if query_cards[i] != world_cards[i]:
-							# return False
+				# print('w', world, 'q', query)
+				for i, ch in enumerate(query):
+					if ch != '*':
+						if ch != world[i]:
+							return False		
+
 			return True
+			# query_cards = query.split(',')
+			# query_cards = list(map(lambda x: card_dict[x], query_cards))
+
+
+			# query_cards_node_format = self.convert()
+
+			# query_cards = np.array(query_cards)
+			# na_filter = np.argwhere(query_cards!=45).flatten()
+			# # print("NA filter",na_filter)
+			# query_cards = query_cards[na_filter]
+			# # print(query_cards)
+			# for world in worlds:
+			# 	world_cards = self.convert_node_to_cards(world)
+			# 	world_cards = np.array(world_cards)
+			# 	# print('cardz', query_cards, world_cards)
+			# 	# print(query_cards!=world_cards[na_filter])
+			# 	if (query_cards!=world_cards[na_filter]).any():
+			# 	# if (query_cards!=world_cards).any():
+			# 		return False
+			# 	# for i in range(0,len(query_cards)):
+			# 		# if query_cards[i] != NA:
+			# 			# if query_cards[i] != world_cards[i]:
+			# 				# return False
+			# return True
 		else:
 
 			op, sub1, sub2 = self.break_it_like_you_hate_it(query)#, worlds)
@@ -538,7 +549,7 @@ def simple_model_query_test():
 	# x = model.get_player_cliques(2, hands=list(map(int,g.board.player_hands)), worlds=model.graph.nodes)
 	# print('cliques2', x)
 
-	val = model.query_model("K1(K0(NA,B3,B2,G3,R1,B1,B2,R2,R3))", list(map(int,g.board.player_hands)))#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
+	val = model.query_model("K0(*1,B*,B2,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands)))#|(K2(B1,B3,B2,G3,R1,B1,B2,R2,R3))")
 	# val = model.query_model("K2(B1,B3,B2,G3,R1,B1,B2,R2,R3)")
 	print(val)
 
@@ -557,7 +568,7 @@ def model_query_test():
 	# print(hands)
 	model = Model(3,3, g.board.player_hands)
 
-	val = model.query_model("K2(K1(K0(NA,NA,NA,G3,R1,B1,B2,R2,R3)))", list(map(int,g.board.player_hands))) # true
+	val = model.query_model("K0(B*,**,**,G3,R1,B1,B2,R2,R3)", list(map(int,g.board.player_hands))) # true
 	# val = model.query_model("K0(~(R1,R1,R1,G3,R1,B1,B2,R2,R3))") # true
 	# val = model.query_model("K0(R1,R1,R1,G3,R1,B1,B2,R2,R3)")
 
@@ -647,8 +658,8 @@ def model_update_test():
 
 
 def main():
-	# simple_model_query_test()
-	model_query_test()
+	simple_model_query_test()
+	# model_query_test()
 	# model_update_test()
 	# "K0(~p)" agent 0 knows p is false
 	# "~K0(p)" agent 0 doesn't know p is true
