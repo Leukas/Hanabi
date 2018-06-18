@@ -58,18 +58,15 @@ Drawing a card is done after a card is discarded or played. This simply adds a c
 
 ### Reimplementation of the model to capture higher order knowledge
 
-- Reason behind reimplementation.
-- Updates don't work with new model.
-- Describe how the new model looks like.
-- Mention space/time complexity.
+The version of the model explained so far was constructed from the initial hand dealt. The motivation behind this was reducing the size of the model. However, this model doesn't properly capture higher order knowledge. To allow for these type of queries, we reimplemented the initialization of the model. In the new and final version, we are taking all permutations of the entire deck as possible worlds in the model, and connecting them for each of the players according to what they can see (similar to a distributed system). The older model had just one clique for each of the players, and they only shared the actual world. For the new version, each player has several cliques.
+
+Since this flaw was caught late in the project, we didn't have enough time to update the model updates to the new assumptions. Thus, this updates are inconsistent and only make sense for the 1-order knowledge in the old model. Also, instantiating the new model an extreme amount of time, since for connecting the nodes we need to take the cartesian product of the nodes. Consequently, querying the model takes also a lot of exploring, hence the extreme simplification of the original game.
 
 ### Querying the Model
 
-The Kripke model contains all the levels of knowledge about the other players hand's that they know. While defining strategies, we need to query the model regarding certain formulas for their validity. Therefore, this function just checks the validity of a certain formula in the model. Importantly, we make a model general checker, that can operate on any model and check the validity of any formula of certain form in that model.
+We implemented a simple formula parser, that can work with the operands &,|,~,M,K. In order to simplify this parsing, we make extensive use of parenthesis. All binary operands must look like `(subformula1) operand (subformula2)`, and `operand(subformula)` for the unary ones. Not that we only consider up to binary cases, so if one wants to have a more complex or, for example, something like this should be used: `(subformula1) | ((subformula2) | (subformula3))`. The epistemic operators must be followed by the agent the formula is being checked for: `K0, M2`. The `M(formula)` operator is implemented by expanding the operator to `~(K(~(formula)))`. In order to simplify queries, we allow for the use of wild cards. For example, for querying "agent 0 knows that he has a red card in the 0th position" could be expressed as `K0(R*,**,**,**,**,**)`. This way, we don't have to include all the possible combinations in the query. The wildcard '*' can be used for either color, number or both. Prior to evaluation, the query is not being checked for correctness, and syntactically wrong queries will result in unpredictable behavior.
 
-- Describe break_it_...
-
-etc...
+The query evaluation is implemented recursively, our leaf condition being the atomic formula. The worlds in which formulas must be checked are subsequently passed for each call. For example, for a formula of the type `K0(formula)`, initially the real world will be used for checking `formula`, but then the subsequent formula will be tested for each of the accessible worlds for 0 from the initial world.
 
 ### Python implementation aspects
 
