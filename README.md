@@ -52,7 +52,7 @@ Both discarding a card and playing a new card, result in the same outcome, i.e. 
 
 #### Giving a Clue
 
-When a player receives a clue, the model needs to know three things: the person who received the clue, the type of clue, and the clue information (e.g. if the clue is a color clue, the color may be red). The type of the clue refers to whether its about a number or a color and the clue information refers to the specific number of color, the clue is about.  Consider a situation where player i receives a clue. Player i?s knowledge about his possibilities changes; they are reduced. There is no change in the first order knowledge of the others players. We remove all the nodes for player i?s accessible worlds from the real world where he considered cards in those positions which differ from the clue information.
+When a player receives a clue, the model needs to know three things: the person who received the clue, the type of clue, and the clue information (e.g. if the clue is a color clue, the color may be red). The type of the clue refers to whether its about a number or a color and the clue information refers to the specific number of color, the clue is about.  Consider a situation where player i receives a clue. Player i's knowledge about his possibilities changes; they are reduced. There is no change in the first order knowledge of the others players. We remove all the nodes for player i's accessible worlds from the real world where he considered cards in those positions which differ from the clue information.
 
 #### Drawing a card
 
