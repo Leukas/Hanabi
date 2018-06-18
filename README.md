@@ -1,4 +1,4 @@
-## MAS Hanabi Preliminary Report
+## MAS Hanabi Final Report
 
 ### About Hanabi
 
@@ -16,9 +16,9 @@ If there are no clues available, or the player knows that one of his cards is no
 
 #### Giving a clue
 
-A player can choose to give a clue to another player. The clue can be given about either the color or the number of the card. When a clue is given, all the cards which share the property of the clue are pointed out. For example, if player A has to Blues and one Red, and player B decides to give A a clue about the Red cards, he will say something like:  "You have 2 blues"; and then indicate the positions of the blue cards. Giving a clue uses up a clue token.
+A player can choose to give a clue to another player. The clue can be given about either the color or the number of the card. When a clue is given, all the cards which share the property of the clue are pointed out. For example, if player A has two Blues and one Red, and player B decides to give A a clue about the Red cards, he will say something like:  "You have 2 blues"; and then indicate the positions of the blue cards. Giving a clue uses up a clue token.
 
-### Modelling Knowledge in the Game
+### Modeling Knowledge in the Game
 
 At every instance of the game, the  truth regarding the game state and the epistemics of the players are modelled as a Kripke model. The advantage of a constantly updating Kripke model is that we directly have access to all the higher order epistemics as long as the model is updated correctly.
 
@@ -36,19 +36,19 @@ In the simplified game of Hanabi that we consider, there are three players. Each
 
 The Kripke model is of the form ![Alt text](resources/eq1.svg). Each world s ![Alt text](./resources/eq2.svg) is of the form of a 6 tuple, which represents the possible hands for all the players (2 cards per player). The definition of the possible worlds encodes the atomic positions that are true in that possible world. A possible atomic proposition is : "the 2nd card in player 2's hand is a red 3". The accessibility relations ![Alt text](resources/eq3.svg) are defined for each of the respective players. Now ![Alt text](resources/eq4.svg) if, each of the other players hands are the same in both the states. This is in a way, the dual of distributed systems modelling, where the agent doesn't know what he has but can see all the other player's hands.
 
-In the simulation of the game, we first randomly allot the hands to the players from the 18 card deck. We then initialize the Kripke model according to the given hands, keeping in mind the fact that each player can see the other players hands but not his own. Now, importantly the possible worlds represent not only 2 cards the player has, but the position of each of the cards in his hand. Therefore for a player's hand <a,b> is distinct from <b,a>. We initially thought of representing a person's hand as a combination rather than a permutation, however the game involves giving clues which are on cards in specific positions. Therefore, the idea was to be more inline with the hand configuration in the board game, even though it might be possible to model the game using possible words as nC<sub>3</sub> rather than nP<sub>3</sub>
+In the simulation of the game, we first randomly allot the hands to the players from the 18 card deck. We then initialize the Kripke model according to the given hands, keeping in mind the fact that each player can see the other players hands but not his own. Now, importantly the possible worlds represent not only 2 cards the player has, but the position of each of the cards in his hand. Therefore for a player's hand, <a,b> is distinct from <b,a>. We initially thought of representing a person's hand as a combination rather than a permutation, however the game involves giving clues which are on cards in specific positions. Therefore, the idea was to be more inline with the hand configuration in the board game, even though it might be possible to model the game using possible words as nC<sub>3</sub> rather than nP<sub>3</sub>
 
 The structure of the initial Kripke model consists of 3 equivalence classes. There is only one world that lies in the pairwise intersection of the three equivalence classes, and that world represents the actual true hand configuration for each player. 
 
-Note: This kripke model is what we initially implemented, however it doesn't capture all the 2nd order knowledge. We discuss the newer and the correct initial model in later in "Reimplementation of the model". This model updates were defined taking this Kripke model into account and only work for 1st order knowledge. 
+Note: This kripke model is what we initially implemented, however it doesn't capture all the 2nd order knowledge. We discuss the newer and the correct initial model in later in "Reimplementation of the model". This model's updates were defined taking this Kripke model into account and only work for 1st order knowledge. 
 
 ### Model Updates
 
-Throughout the game there are 4 ways due to which the knowledge of the players change. When the player discards a card, when they play a card, when they draw a new card from the deck and when they give a clue to another player either about a specific number or color. Usually drawing a card after playing or discarding a card is part of the same action, as each player always needs to have 3 cards in his hand. However here we separate them the action into subactions and have a respective model update for that subaction as they result in different epistemic changes.
+Throughout the game there are 4 ways by which the knowledge of the players change. When the player discards a card, when they play a card, when they draw a new card from the deck and when they give a clue to another player either about a specific number or color. Usually drawing a card after playing or discarding a card is part of the same action, as each player always needs to have 3 cards in his hand. However here we separate them the action into subactions and have a respective model update for that subaction as they result in different epistemic changes.
 
 #### Discarding and Playing Card
 
-Both discarding a card and playing a new card, result in the same outcome, i.e. all the players can see the card. Therefore both these actions are equivalent in the epistemic sense and are defined as one function. With respect to the first order knowledge, only the knowledge of the player who plays or discards the card, changes. The possible words of the player who plays the card reduce. All the worlds where he didn't have that particular card, in that position of his hand are removed, and all the other contradictory information that is implicit from that action are taken into account. Let's say after the person play's the card, all the red card are either in the discard pile or the central stacks in the board, then the player knows that he cant have any red card and removed all the possible worlds where he does have a red card. 
+Both discarding a card and playing a new card, result in the same outcome, i.e. all the players can see the card. Therefore both these actions are equivalent in the epistemic sense and are defined as one function. With respect to the first order knowledge, only the knowledge of the player who plays or discards the card, changes. The possible words of the player who plays the card reduce. All the worlds where he didn't have that particular card, in that position of his hand are removed, and all the other contradictory information that is implicit from that action are taken into account. Let's say after the person plays the card, all the red cards are either in the discard pile or the central stacks in the board, then the player knows that he can't have any red cards and all the possible worlds where he does have a red card are removed. 
 
 #### Giving a Clue
 
@@ -56,7 +56,7 @@ When a player receives a clue, the model needs to know three things: the person 
 
 #### Drawing a card
 
-Drawing a card is done after a card is discarded or played. This simply adds a card in the hand of the player who discarded or played a card. So, we must update every player's knowledge. For the players who are not receiving a new card, we simply get all their accessible worlds and replace the knowledge of the old card with the new card. For the player receiving a new card, we need to add new worlds. We get all of the player's accessible worlds as well as the player's knowledge of the cards left in the deck. Then for each accessible world, a world is added for each possible card left in the deck. For example in a simpler game, let a player only have 2 cards in their hand. If they know one card is a red, and the other is blue, then they have access to worlds: \{B1R1, B2R1, B3R1, ..., B3R3\}. If they discard the blue card, and draw a new card then their worlds will now be \{R1R1,R2R1,...,G3R3\}. 
+Drawing a card is done after a card is discarded or played. This simply adds a card in the hand of the player who discarded or played a card. So, we must update every player's knowledge. For the players who are not receiving a new card, we simply get all their accessible worlds and replace the knowledge of the old card with the new card. For the player receiving a new card, we need to add new worlds. We get all of the player's accessible worlds as well as the player's knowledge of the cards left in the deck. Then for each accessible world, a world is added for each possible card left in the deck. For example in a simpler game, let a player only have 2 cards in their hand. If they know one card is a red, and the other is blue, then they have access to worlds: `{B1R1, B2R1, B3R1, ..., B3R3\}`. If they discard the blue card, and draw a new card then their worlds will now be \{R1R1,R2R1,...,G3R3\}. 
 
 ### Reimplementation of the model to capture higher order knowledge
 
