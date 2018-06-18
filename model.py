@@ -54,14 +54,29 @@ def worlds_of_numbers(nodes):
 		node_nums.append(','.join(map(lambda x: str(card_dict[x]), node.split(','))))
 	return node_nums
 
+
+def convert_cards_to_node(cards):
+	"""
+	Converts [1,1,1] to '1,1,1'
+	"""
+	return ','.join(str(w) for w in cards)
+
+def convert_node_to_cards(node):
+	"""
+	Converts '1,1,1' to [1,1,1]
+	"""
+	return list(map(int, node.split(',')))
+
 class Model():
-	def __init__(self, num_players, cards_per_player, player_hands, initialize=True):
+	def __init__(self, num_players, cards_per_player, player_hands, initialize=True, simple_model=True):
 		print("Creating nodes...")
 		self.graph = nx.MultiGraph()
 		self.num_players = num_players
-		self.cards_per_player = 2#cards_per_player
+		self.cards_per_player = cards_per_player
 		print("Nodes created.")
-		if initialize:
+		if simple_model:
+			self.initialize_simple_model(list(map(int,player_hands)))
+		elif initialize:
 			self.initialize_model(list(map(int,player_hands)))
 		else:
 			self.load_model('model.bin')
@@ -70,6 +85,36 @@ class Model():
 	def load_model(self, filepath):
 		file = open(filepath,'rb')
 		self.graph = pickle.load(file)
+
+	def initialize_simple_model(self, hands):
+		"""
+		Hands = 9 number array following CardDigit
+		"""
+
+		for p_idx in range(0,self.num_players):
+			card_deck = self.remove_known_cards(p_idx, list(map(int,hands)))
+			# print('card_deck', convert_cards_to_node(card_deck))
+			# get all n-card combinations for each players
+			perms = itertools.permutations(card_deck, self.cards_per_player)			
+			perms = set(list(perms))
+			worlds = []
+			for p in perms:
+				world = hands[0:p_idx*self.cards_per_player] + list(p) + hands[(p_idx+1)*self.cards_per_player:]
+				world = convert_cards_to_node(world)
+
+				# if the hand combination doesnt exist in the model, add it to the model
+				# if another player has already added the world into the model, dont add it
+				if world not in self.graph.nodes:
+					self.graph.add_node(world)
+				
+				# if more than 1 player can access the same world, still need to add those edges into the graph
+				worlds.append(world)
+
+			self.connect_nodes(worlds, p_idx)
+			# print('idx', p_idx)
+			# print('model worlds', worlds_of_strings(worlds))
+		self.add_self_loops()
+
 
 	def initialize_model(self, hands):
 		"""
@@ -86,7 +131,7 @@ class Model():
 				# print(i)
 			# print(p)
 			# break
-			world = self.convert_cards_to_node(p)
+			world = convert_cards_to_node(p)
 			self.graph.add_node(world)
 
 
@@ -132,13 +177,13 @@ class Model():
 
 		# for p_idx in range(0,self.num_players):
 		# 	# card_deck = self.remove_known_cards(p_idx, list(map(int,hands)))
-		# 	# print('card_deck', self.convert_cards_to_node(card_deck))
+		# 	# print('card_deck', convert_cards_to_node(card_deck))
 		# 	# get all n-card combinations for each players
 		# 	perms = set(list(perms))
 		# 	worlds = []
 		# 	for p in perms:
 		# 		world = hands[0:p_idx*self.cards_per_player] + list(p) + hands[(p_idx+1)*self.cards_per_player:]
-		# 		world = self.convert_cards_to_node(world)
+		# 		world = convert_cards_to_node(world)
 
 		# 		# if the hand combination doesnt exist in the model, add it to the model
 		# 		# if another player has already added the world into the model, dont add it
@@ -157,18 +202,6 @@ class Model():
 		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p0=1)
 		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p1=1)
 		self.graph.add_edges_from(list(zip(self.graph.nodes,self.graph.nodes)), p2=1)
-
-	def convert_cards_to_node(self, cards):
-		"""
-		Converts [1,1,1] to '1,1,1'
-		"""
-		return ','.join(str(w) for w in cards)
-
-	def convert_node_to_cards(self, node):
-		"""
-		Converts '1,1,1' to [1,1,1]
-		"""
-		return list(map(int, node.split(',')))
 
 	def get_visible_hands(self, hands, player_idx):
 		return hands[0:player_idx*self.cards_per_player] + hands[(player_idx+1)*self.cards_per_player:]
@@ -194,7 +227,7 @@ class Model():
 	# 	non_self_player_nodes = set(list(non_self_player_edges[0::3]) + list(non_self_player_edges[1::3]))
 	# 	self_player_nodes = set(list(self_player_edges[0::3]) + list(self_player_edges[1::3]))
 	# 	self_player_nodes = self_player_nodes - non_self_player_nodes
-	# 	true_node = self.convert_cards_to_node(hands)
+	# 	true_node = convert_cards_to_node(hands)
 	# 	non_self_player_nodes.add(true_node)
 	# 	# print('player_nodes', non_self_player_nodes, player_num)
 	# 	self_player_nodes -= {true_node}
@@ -256,8 +289,8 @@ class Model():
 		# print('hands', hands)
 		for i in range(0,self.num_players):
 
-			player_nodes = self.get_accessible_nodes_from_world(i,self.convert_cards_to_node(hands))
-			print('player_nodes', worlds_of_strings(player_nodes))
+			player_nodes = self.get_accessible_nodes_from_world(i,convert_cards_to_node(hands))
+			# print('player_nodes', worlds_of_strings(player_nodes))
 			if i == player_num:
 				for n in player_nodes:
 					nodes_to_remove.add(n)
@@ -268,7 +301,7 @@ class Model():
 
 					for c in cards_left:
 						node[player_num*self.cards_per_player+hand_idx] = c
-						node_to_add = self.convert_cards_to_node(node)
+						node_to_add = convert_cards_to_node(node)
 						nodes_to_add.add(node_to_add)
 			else:
 				# modifying the players knowledge who arent getting a new card
@@ -278,9 +311,9 @@ class Model():
 					nodes_to_remove.add(n)
 					node = self.convert_node_to_cards(n)
 					node[player_num*self.cards_per_player+hand_idx] = int(card)
-					node = self.convert_cards_to_node(node)
+					node = convert_cards_to_node(node)
 					nodes_to_add.add(node)
-				print('some comment', i, nodes_to_add, nodes_to_remove)
+				# print('some comment', i, nodes_to_add, nodes_to_remove)
 
 		self.graph.remove_nodes_from(nodes_to_remove)
 		self.graph.add_nodes_from(nodes_to_add)
@@ -295,8 +328,8 @@ class Model():
 			y = 1,2,3 = 1,2,3 or = R,G,B
 
 		"""		
-		player_nodes = self.get_accessible_nodes_from_world(player_num, self.convert_cards_to_node(hands))
-		print('player_nodes', player_nodes)
+		player_nodes = self.get_accessible_nodes_from_world(player_num, convert_cards_to_node(hands))
+		# print('player_nodes', player_nodes)
 		player_hand = np.array(self.get_player_hand(hands, player_num))
 		nodes_to_remove = []
 		if clue[0] == 0: # NUMBER CLUE
@@ -458,7 +491,7 @@ class Model():
 				#	Check if the knowledge formula is true in all worlds
 				# else:
 				# 	boo = True
-				# 	# player_acc_nodes = self.get_accessible_nodes_from_world(int(op[1]), self.convert_cards_to_node() )
+				# 	# player_acc_nodes = self.get_accessible_nodes_from_world(int(op[1]), convert_cards_to_node() )
 				# 	for world in worlds:
 				# 		# print('player world', world)
 				# 		boo = self.query_model(query, hands, [world])
@@ -535,7 +568,7 @@ class Model():
 			if int(i/self.cards_per_player) == player_num:
 				continue
 			# will throw an error here if the deck configuration isn't possible
-			if int(visible_cards[i]) != NC:	
+			if int(visible_cards[i]) != NC:
 				del card_deck[card_deck.index(visible_cards[i])]
 		# print('card_deck', card_deck)
 		return card_deck
@@ -699,7 +732,7 @@ def model_update_test():
 	model.connect_nodes([node_nums[0]]+node_nums[3:5], 1)
 	model.connect_nodes([node_nums[0]]+node_nums[5:7], 2)
 	model.add_self_loops()
-	hand_format = model.convert_cards_to_node(list(map(int,g.board.player_hands)))
+	hand_format = convert_cards_to_node(list(map(int,g.board.player_hands)))
 	print('acc nodes', model.get_accessible_nodes_from_world(2,hand_format))
 
 	print(list(map(int,g.board.player_hands)))
@@ -820,7 +853,7 @@ def main():
 	# print(graph.nodes[graph.nodes%10==0])
 
 	# a = [1,2,3,4]
-	# b = model.convert_cards_to_node(a)
+	# b = convert_cards_to_node(a)
 	# print(b)
 	# a = set()
 	# a.add(1)
