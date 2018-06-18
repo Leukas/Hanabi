@@ -70,9 +70,91 @@ We implemented a simple formula parser, that can work with the operands `&,|,~,M
 
 The query evaluation is implemented recursively, our leaf condition being the atomic formula. The worlds in which formulas must be checked are subsequently passed for each call. For example, for a formula of the type `K0(formula)`, initially the real world will be used for checking `formula`, but then the subsequent formula will be tested for each of the accessible worlds for 0 from the initial world.
 
-### Python implementation aspects
+### Python Implementation
 
-- Explain files and functions.
-- Explain how to run the code.
+#### card.py
 
-### Demo
+card.py includes the Card class and Deck class.
+
+##### Card
+
+The Card class handles conversions from readable card text to other formats needed for the model.
+
+##### Deck
+
+The Deck class creates a deck of cards and handles drawing and shuffling. The Deck class was intended for use in simulating an entire game of Hanabi.
+
+#### player.py
+
+player.py includes the Player class, Board class, and Game class.
+
+##### Player
+
+The Player class is currently empty, as it was intended to handle strategies. For any future work, decide_action() can be made to handle a strategy, and give_clue, discard, and play_card can be used as wrappers for querying the model.
+
+##### Board
+
+The board class handles all components of the board, including the deck, players' hands, discard pile, stacks, and number of clues and lives left. discard_card, draw_card, and play_card are all used to update the board based on the players' actions, but they do not update the model.
+
+##### Game
+
+The Game class combines the players, board, and model. play_turn prompts the player for an action and updates the board and model based on the action. play_game runs through an entire game. Needs Player to be implemented to run.
+
+#### model.py
+
+model.py includes the model class, as well as some static helper and testing functions related to the model.
+Implemented as a multigraph with the package [NetworkX](https://networkx.github.io/).
+
+##### initialize_simple_model
+
+Initializes a model with worlds and connections that work for first-order knowledge queries.
+
+##### initialize_model
+
+Initializes a reduced model for higher-order knowledge queries, using 9 of the 18 cards in the deck. The other 9 are assumed to be in the discard pile.
+
+##### get_accessible_nodes_from_world
+
+Gets all the worlds accessible to a player from a specific world.
+
+##### update_discard_and_play
+
+Updates the model after a card is discarded or played. The update requires the card being discarded, the player who is discarding, the index of the card in the player's hand, and the board state (discard pile, stacks, all players' hands).
+
+##### update_draw_card
+
+Updates the model after a card is drawn. This is done exclusively after update_discard_and_play. Requires the card drawn, the player and index of where the card will go, and the board state.
+
+##### update_clue
+
+Updates the model after a clue is given. Requires the player who is receiving the clue, and a clue that is either a number or color clue. A number clue looks like (0, 1) for a clue about the number 1. A color clue looks like (1, 1) for a clue about the color red, where red = 1, blue = 2, green = 3. 
+
+##### break_it_like_you_hate_it
+
+Implements query parsing. Breaks the original query into the operand, subformula1 and subformula2. Also expands Mi to ~ Ki ~ as explained above.
+
+##### query_model
+
+Recursive implementation of the parsed query. As inputs takes the query, the actual hand and the world(s) where the query has to be evaluated.
+
+##### left_in_deck
+
+Taking into account what the player_num sees, this function will return the cards that that player thinks are left in the deck.
+
+##### reconnect_nodes
+
+Model updates are implemented by deleting all edges and reconnecting the nodes after each update, to ensure consistency. This function will take care of that.
+
+##### connect_nodes
+
+Adds the actual edges to the NetworkX graph.
+
+#### Instructions of how to execute code
+
+To run the live demo, run "python demo.py"
+
+#### Dependencies
+
+Python 3.6
+NumPy
+NetworkX
