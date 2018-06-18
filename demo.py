@@ -135,19 +135,20 @@ def init2(starting_hands):
 def higher_order_query_demo(g, model, q_idx=None):
 	# print(g.board.player_hands)
 	queries = []
-	queries.append("K1(R1,R2,**,**,G1,G1)") # T
-	queries.append("K1(**,**,R3,G1,**,**)") # F
-	queries.append("K0(~(**,G1,**,**,**,**))") # T
-	queries.append("M0(**,G1,**,**,**,**)") # F
+	# queries.append("K1(R1,R2,**,**,G1,G1)") # T
+	# queries.append("K1(**,**,R3,G1,**,**)") # F
+	# queries.append("K0(~(**,G1,**,**,**,**))") # T
+	# queries.append("M0(**,G1,**,**,**,**)") # F
+	queries.append("M1(**,**,G1,G1,**,**)") # F
 	queries.append("M2(M1(**,**,G1,G1,**,**))") # T
 	queries.append("M0(M1(**,**,G1,G1,**,**))") # F
 	queries.append("M0(M2(M1(**,**,G1,G1,**,**)))") # T
-	queries.append("M2(M0(M1(**,**,G1,G1,**,**)))") # T
-	queries.append("K0(M2(M0(M1(**,**,G1,G1,**,**))))") # T
 	queries.append("M0(M1(M0(**,**,G1,G1,**,**)))") # F
-	queries.append("K0(K1(M0(**,**,G1,G1,**,**)))") # F
-	queries.append("K0(R*,R*,**,**,**,**)") # T
-	queries.append("K1(K0(R*,R*,**,**,**,**))") # F
+	# queries.append("M2(M0(M1(**,**,G1,G1,**,**)))") # T
+	queries.append("K0(M2(M0(M1(**,**,G1,G1,**,**))))") # T
+	# queries.append("K0(K1(M0(**,**,G1,G1,**,**)))") # F
+	# queries.append("K0(R*,R*,**,**,**,**)") # T
+	# queries.append("K1(K0(R*,R*,**,**,**,**))") # F
 
 	qs = []
 	if q_idx is not None:
