@@ -1,5 +1,20 @@
 ## MAS Hanabi Preliminary Report
 
+### About Hanabi
+Hanabi is a cooperative card game where the goal is for the players to get as most points as possible. Points are earned by playing cards in numerical order and matching in color. In our simplified version, cards can be Red, Green, or Blue, and are numbered 1, 2, or 3. Unlike most card games, players can see the other players' cards, but not their own. Each turn, a player can do one of three things: play a card on a stack, discard a card, or give a clue to one of the other players about their cards.
+
+#### Playing a card
+A player can choose one of their cards to play onto the stacks. If the card they choose isn't playable, then the card is discarded and the players lose a life. If all lives are lost, the game ends.
+
+#### Discarding a card
+A player can choose to discard one of their cards. This restores one clue token, which are used to give clues. The discarded cards are visible to all the players.
+
+#### Giving a clue
+A player can choose to give a clue to another player. The clue can be given about either the color or the number of the card. For example, a player can say to another player "You have 2 blues", and they can indicate the positions of the blue cards. Giving a clue uses up a clue token. 
+
+
+
+
 ### Modelling Knowledge in the Game
 
 At every instance of the game, the  truth regarding the game state and the epistemics of the players are modelled as a Kripke model. The advantage of a constantly updating Kripke model is that we directly have access to all the higher order epistemics as long as the model is updated correctly. 
