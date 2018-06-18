@@ -149,7 +149,7 @@ Model updates are implemented by deleting all edges and reconnecting the nodes a
 
 Adds the actual edges to the NetworkX graph.
 
-#### Instructions of how to execute code
+#### Instructions on how to execute code
 
 To run the live demo, run "python demo.py"
 
