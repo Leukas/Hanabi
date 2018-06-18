@@ -158,3 +158,7 @@ To run the live demo, run "python demo.py"
 Python 3.6,
 NumPy,
 NetworkX
+
+### Download
+
+The final submission can be downloaded from this [link](https://github.com/m-rios/Hanabi/releases/tag/submission).
