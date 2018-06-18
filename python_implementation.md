@@ -64,4 +64,10 @@ Model file:
 	get acc
 	etc
 
-Instructions of how to execute code
+#### Instructions of how to execute code
+To run the live demo, run "python demo.py"
+
+#### Dependencies
+Python 3.6
+NumPy
+NetworkX
